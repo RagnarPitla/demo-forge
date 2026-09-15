@@ -198,6 +198,8 @@ footer.doc b{color:var(--text-2)}
     <a href="#sec-14">14. Evidence</a>
     <a href="#sec-15">15. Limits and risks</a>
     <a href="#sec-16">16. Runbook</a>
+    <div class="grp">Latest change</div>
+    <a href="#sec-17">17. Directed capture</a>
   </nav>
 </aside>
 
@@ -212,11 +214,11 @@ footer.doc b{color:var(--text-2)}
     <span class="pill on">Verified end to end against the live Mia site</span>
   </div>
   <div class="stat-row">
-    <div class="stat"><b>4,319</b><span>lines of tooling</span></div>
+    <div class="stat"><b>4,945</b><span>lines of tooling</span></div>
     <div class="stat"><b>7</b><span>pipeline stages</span></div>
     <div class="stat"><b>8</b><span>CLI commands</span></div>
     <div class="stat"><b>163</b><span>design tokens recovered</span></div>
-    <div class="stat"><b>8</b><span>bugs found by testing</span></div>
+    <div class="stat"><b>13</b><span>bugs found by testing</span></div>
     <div class="stat"><b>3</b><span>verify gates</span></div>
   </div>
 </header>
@@ -239,6 +241,7 @@ footer.doc b{color:var(--text-2)}
     <li><a href="#sec-14">Verification evidence</a></li>
     <li><a href="#sec-15">Limits, gaps and known risks</a></li>
     <li><a href="#sec-16">Runbook: your next demo, start to finish</a></li>
+    <li><a href="#sec-17">Directed capture: you give the clicks, it follows them</a></li>
   </ol>
 </div>
 
@@ -939,23 +942,24 @@ demo-forge capture https://app.example.com --out ./acme-demo/capture --routes 20
       <table>
         <thead><tr><th>File</th><th class="num">Lines</th><th>Role</th></tr></thead>
         <tbody>
-          <tr><td><code>tools/lib/capture.mjs</code></td><td class="num">679</td><td>Playwright capture, frame scoring, PROBE, SPA crawler</td></tr>
-          <tr><td><code>tools/lib/scaffold.mjs</code></td><td class="num">533</td><td>Capture to React, block classification, audience registration</td></tr>
+          <tr><td><code>tools/lib/capture.mjs</code></td><td class="num">804</td><td>Playwright capture, frame scoring, PROBE, crawler + directed runner</td></tr>
+          <tr><td><code>tools/lib/scaffold.mjs</code></td><td class="num">543</td><td>Capture to React, block classification, audience registration</td></tr>
           <tr><td><code>tools/lib/design.mjs</code></td><td class="num">526</td><td>Token adoption, role inference, contrast, provenance</td></tr>
-          <tr><td><code>tools/demo-forge.mjs</code></td><td class="num">363</td><td>CLI, 8 commands, flag allowlist</td></tr>
+          <tr><td><code>tools/demo-forge.mjs</code></td><td class="num">414</td><td>CLI, 8 commands, flag allowlist</td></tr>
+          <tr><td><code>tools/lib/steps.mjs</code></td><td class="num">287</td><td>Instruction parser, CSP-safe resolver, step executor</td></tr>
           <tr><td><code>assets/template/src/demo/guide.js</code></td><td class="num">357</td><td>The guided-tour engine</td></tr>
-          <tr><td><code>SKILL.md</code></td><td class="num">246</td><td>The contract the agent follows</td></tr>
+          <tr><td><code>SKILL.md</code></td><td class="num">277</td><td>The contract the agent follows</td></tr>
           <tr><td><code>assets/template/src/shell/primitives.jsx</code></td><td class="num">236</td><td>The 9 components the scaffold emits</td></tr>
           <tr><td><code>tools/lib/deploy.mjs</code></td><td class="num">164</td><td>Azure CLI wrapper</td></tr>
           <tr><td><code>assets/template/src/shell/AppShell.jsx</code></td><td class="num">158</td><td>Rail, topbar, outlet</td></tr>
           <tr><td><code>assets/template/scripts/verify-render.mjs</code></td><td class="num">158</td><td>The render and containment gate</td></tr>
-          <tr><td><code>references/*.md</code></td><td class="num">644</td><td>Six reference documents</td></tr>
+          <tr><td><code>references/*.md</code></td><td class="num">766</td><td>Six reference documents</td></tr>
           <tr><td><code>assets/template/src/demo/scope.js</code></td><td class="num">72</td><td>Sub-site containment</td></tr>
           <tr><td><code>assets/template/src/demo/registry.js</code></td><td class="num">64</td><td>The audience registry</td></tr>
           <tr><td><code>assets/template/scripts/verify-audiences.mjs</code></td><td class="num">51</td><td>Registry and script consistency</td></tr>
           <tr><td><code>assets/template/scripts/verify-routes.mjs</code></td><td class="num">48</td><td>Duplicate and nav-resolution check</td></tr>
           <tr><td><code>assets/template/scripts/verify-all.mjs</code></td><td class="num">20</td><td>Gate runner</td></tr>
-          <tr><td><b>Total</b></td><td class="num"><b>4,319</b></td><td></td></tr>
+          <tr><td><b>Total</b></td><td class="num"><b>4,945</b></td><td></td></tr>
         </tbody>
       </table>
     </div>
@@ -1011,6 +1015,202 @@ demo-forge capture https://app.example.com --out ./acme-demo/capture --routes 20
   </ol>
 
   <div class="note good"><b>The honest time estimate</b>A cold <code>build</code> against a public SPA is minutes. Reviewing the tokens and the screens is the better part of an hour. The storyline is as long as the argument takes to write, and is the only part no tool can shorten. Project Mia took weeks by hand; the second application is a day, and most of that day is judgement rather than reconstruction.</div>
+</section>
+
+<section id="sec-17">
+  <h2><span class="n">17</span>Latest change</h2>
+  <h3>Directed capture: you give the clicks, it follows them</h3>
+
+  <p>The original capture stage had one mode. It crawled: seeded a queue from the entry route's navigation, ranked the candidates, and visited whatever it decided looked like a route. That answers <i>what is in this app</i>. It does not answer <i>show me the approval path and not the settings page</i>, which is the question you actually have in front of a customer.</p>
+
+  <p>Directed capture is the other half. You supply an ordered instruction list, it performs each one against the live app and records a screen after each. The instruction list doubles as the outline of the storyline the demo will narrate, so the beats you type become the beats you speak.</p>
+
+  <blockquote>The crawler optimises for coverage. A demo needs a path. Those are different objectives and they need opposite behaviour at the one point that matters, which is why they are separate loops rather than one loop with a flag.</blockquote>
+
+  <h3>Inventory of changes</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>File</th><th>Change</th><th>Why</th><th>Lines</th></tr></thead>
+    <tbody>
+      <tr><td><code>tools/lib/steps.mjs</code></td><td><b>New.</b> Instruction parser, CSP-safe target resolver, step executor</td><td>The language and the clicking</td><td>+274</td></tr>
+      <tr><td><code>tools/lib/capture.mjs</code></td><td><code>recordScreen()</code> extracted from the crawl loop</td><td>Both modes must emit one manifest shape</td><td>+51 / -29</td></tr>
+      <tr><td><code>tools/lib/capture.mjs</code></td><td><code>runDirected()</code> added; <code>steps</code> option on <code>captureSite</code></td><td>One continuous session, no reset</td><td>+68</td></tr>
+      <tr><td><code>tools/lib/capture.mjs</code></td><td><code>mode</code>, <code>steps</code>, <code>timeline</code> written to the manifest</td><td>Downstream needs the intended order</td><td>+3</td></tr>
+      <tr><td><code>tools/lib/scaffold.mjs</code></td><td><code>buildScript()</code> reads the timeline when present</td><td>Narration follows your clicks, not route order</td><td>+12 / -6</td></tr>
+      <tr><td><code>tools/demo-forge.mjs</code></td><td><code>--do</code> and <code>--steps</code>, plus <code>loadSteps()</code></td><td>Two ways in, one step list out</td><td>+28</td></tr>
+      <tr><td><code>tools/demo-forge.mjs</code></td><td><code>build</code> now passes explicit directories down the chain</td><td><b>Bug.</b> <code>build --out</code> scaffolded from the wrong directory</td><td>+9 / -4</td></tr>
+      <tr><td><code>tools/demo-forge.mjs</code></td><td><code>StepError</code> printed without a stack trace</td><td>A bad label is a user error, not a crash</td><td>+6 / -1</td></tr>
+      <tr><td><code>tools/lib/steps.mjs</code></td><td><code>back</code> refuses if it left the application</td><td><b>Bug.</b> Walked off a hash-routed SPA into <code>about:blank</code></td><td>+14 / -2</td></tr>
+      <tr><td><code>tools/lib/capture.mjs</code></td><td>12-element floor per recorded screen</td><td><b>Bug.</b> A blank page was recorded as a route</td><td>+11</td></tr>
+      <tr><td><code>tools/lib/capture.mjs</code></td><td>Design probe returns to the entry URL first</td><td><b>Bug.</b> Tokens were read from wherever the run ended</td><td>+7 / -2</td></tr>
+      <tr><td><code>tools/lib/capture.mjs</code></td><td>A typing step always records</td><td><b>Bug.</b> A filtered list was collapsed as a revisit</td><td>+5 / -2</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>Change 1 - the reset, which is the whole architectural point</h3>
+  <p>The crawler returns to the entry URL before every hop. That is correct for a crawler and wrong for a sequence.</p>
+
+  <p class="fixmeta"><b>lib/capture.mjs</b> &middot; the crawler replays from the entry URL; directed capture must not</p>
+  <div class="code-compare">
+    <div class="cc before"><div class="hd">Before - one loop, and it resets</div><div class="body"><span class="line keep">while (queue.length &amp;&amp; routes.length &lt; maxRoutes) {</span><span class="line keep">  const job = queue.shift();</span><span class="line keep">  if (job.via !== 'entry') {</span><span class="line focus">    // an SPA's state machine is not guaranteed reversible</span><span class="line del">    await page.goto(url, { waitUntil: 'domcontentloaded' });</span><span class="line del">    await settle(page, waitMs);</span><span class="line keep">    // ...then replay the single click for this job</span><span class="line keep">  }</span></div></div>
+    <div class="cc after"><div class="hd">After - directed mode never resets</div><div class="body"><span class="line keep">await record('Home', 'entry');</span><span class="line keep"></span><span class="line keep">for (const step of steps) {</span><span class="line focus">  // your steps are a sequence; a sequence accumulates state</span><span class="line add">  const frame = await findAppFrame(page);</span><span class="line add">  const res = await runStep(page, frame, step, { waitMs, settle });</span><span class="line add">  if (res.recorded) await record(res.label, `step:${step.verb}`);</span><span class="line keep">}</span></div></div>
+  </div>
+
+  <p>Open a project, then open its documents. Reset between those two clicks and the second one lands on an empty documents list, records the wrong screen, and reports success. The cost of not resetting is that a failed step invalidates everything after it, which is precisely why a step that cannot be performed throws instead of continuing.</p>
+
+  <h3>Change 2 - one recorder, two callers</h3>
+  <p>The screenshot, DOM dump, outline write and <code>routes.push()</code> were inline in the crawl loop. Two modes writing two versions of that block would eventually produce two manifest shapes, and the scaffold reads exactly one.</p>
+
+  <p class="fixmeta"><b>lib/capture.mjs</b> &middot; 29 inline lines became <code>recordScreen()</code></p>
+  <div class="code-compare">
+    <div class="cc before"><div class="hd">Before - inline, 29 lines, one caller</div><div class="body"><span class="line del">const slug = slugify(job.label === 'Home' ? 'home' : job.label);</span><span class="line del">const shot = `screens/${slug}.png`;</span><span class="line del">await page.screenshot({ path: join(outDir, shot) });</span><span class="line del">const html = await frame.evaluate(() =&gt; document.body.outerHTML);</span><span class="line del">await writeFile(join(outDir, `dom/${slug}.html`), html);</span><span class="line del">routes.push({ slug, label: job.label, via: job.via, /* 12 more */ });</span></div></div>
+    <div class="cc after"><div class="hd">After - a helper both modes call</div><div class="body"><span class="line add">async function recordScreen({ page, frame, data, label, via, outDir, routes }) {</span><span class="line add">  const base = slugify(label === 'Home' ? 'home' : label);</span><span class="line focus">  // directed steps can revisit a label; suffix rather than overwrite</span><span class="line add">  let slug = base;</span><span class="line add">  for (let n = 2; routes.some(r =&gt; r.slug === slug); n++) slug = `${base}-${n}`;</span><span class="line keep">  /* screenshot, dom, outline, push - unchanged */</span><span class="line add">}</span></div></div>
+  </div>
+
+  <h3>Change 3 - the resolver must survive a Content-Security-Policy</h3>
+  <p>The first draft passed the resolver into the page as a source string and called <code>eval()</code> on it. A page with a strict CSP blocks <code>eval</code>, and that is exactly the kind of well-built application this tool is most likely to be pointed at. Playwright serialises a real function over CDP instead, which CSP does not touch.</p>
+
+  <p class="fixmeta"><b>lib/steps.mjs</b> &middot; <code>eval()</code> in page context replaced by a serialised function</p>
+  <div class="code-compare">
+    <div class="cc before"><div class="hd">Before - eval in page context</div><div class="body"><span class="line del">export const RESOLVE = `(() =&gt; { /* ...resolver source... */ })()`;</span><span class="line keep"></span><span class="line keep">await frame.evaluate(([resolveSrc, target, k, value]) =&gt; {</span><span class="line del">  const resolve = eval(resolveSrc);</span><span class="line del">  const r = resolve(target, k);</span><span class="line keep">}, [RESOLVE, step.target, kind, step.value]);</span></div></div>
+    <div class="cc after"><div class="hd">After - a function, serialised by Playwright</div><div class="body"><span class="line add">function actInPage([target, kind, value]) {</span><span class="line focus">  // resolution and the action, inlined - nothing is stringified</span><span class="line add">  /* data-testid -&gt; label[for] -&gt; exact name -&gt; unique substring */</span><span class="line add">}</span><span class="line keep"></span><span class="line add">await frame.evaluate(actInPage, [step.target, kind, step.value ?? '']);</span></div></div>
+  </div>
+
+  <h3>Change 4 - narration follows your clicks</h3>
+  <p>The storyline scaffold generated one beat per route, in route order. A crawl has no intended order so that was the best available. A directed capture has one, written to the manifest as a <code>timeline</code>.</p>
+
+  <p class="fixmeta"><b>lib/scaffold.mjs</b> &middot; <code>buildScript()</code> gained the timeline</p>
+  <div class="code-compare">
+    <div class="cc before"><div class="hd">Before - route order, revisits impossible</div><div class="body"><span class="line del">function buildScript(routes) {</span><span class="line del">  const steps = routes.slice(0, 10).map((r, i) =&gt; {</span><span class="line del">    const what = r.label === 'Home' ? 'the landing screen' : r.label.toLowerCase();</span><span class="line del">    script: 'TODO: say why ${what} matters to this audience...'</span><span class="line keep">  });</span></div></div>
+    <div class="cc after"><div class="hd">After - the order you asked for</div><div class="body"><span class="line add">function buildScript(routes, timeline = []) {</span><span class="line focus">  // use the timeline when it exists; fall back for a crawl</span><span class="line add">  const beats = timeline.length ? timeline : routes.map(/* ... */);</span><span class="line add">  const hint = b.revisit</span><span class="line add">    ? 'TODO: you come back to ${what} here. Say what changed...'</span><span class="line add">    : 'TODO: say why ${what} matters to this audience...';</span><span class="line keep">  });</span></div></div>
+  </div>
+
+  <p>A second visit to a screen is a different sentence, so it gets a different prompt.</p>
+
+  <h3>Change 5 - the ninth bug, found by using the feature</h3>
+  <p>The first end-to-end directed run died with <code>No capture.json in /private/tmp/forge-proof/demo-build/capture</code>. The <code>build</code> command chained the three stages but called <code>cmdScaffold()</code> with no arguments, so it re-read <code>--out</code> from the command line. In <code>capture</code>, <code>--out</code> means the capture directory; in <code>scaffold</code>, it means the app directory. One flag, two meanings, silently pointing the two stages at the same path.</p>
+
+  <p class="fixmeta"><b>demo-forge.mjs</b> &middot; <code>build --out</code> pointed scaffold at the wrong directory</p>
+  <div class="code-compare">
+    <div class="cc before"><div class="hd">Before - each stage re-reads the same flag</div><div class="body"><span class="line keep">async function cmdBuild(url) {</span><span class="line del">  const captureDir = await cmdCapture(url);</span><span class="line del">  await cmdDesign(captureDir);</span><span class="line del">  const appDir = await cmdScaffold();</span><span class="line focus">  // cmdScaffold reads --out itself: capture dir, not app dir</span><span class="line keep">}</span></div></div>
+    <div class="cc after"><div class="hd">After - --out is the project root</div><div class="body"><span class="line keep">async function cmdBuild(url) {</span><span class="line focus">  // in build, --out names the PROJECT ROOT, not one stage's output</span><span class="line add">  const root = resolve(String(flag('out', DEFAULT_ROOT)));</span><span class="line add">  const captureDir = await cmdCapture(url, join(root, 'capture'));</span><span class="line add">  await cmdDesign(captureDir, join(root, 'design'));</span><span class="line add">  const appDir = await cmdScaffold(captureDir, join(root, 'design'), join(root, 'app'));</span><span class="line keep">}</span></div></div>
+  </div>
+
+  <p>It had been latent since the CLI was written. Only a run that set <code>--out</code> on <code>build</code> could expose it, and the original Mia test used the default path.</p>
+
+  <h3>Four more bugs, all found by using the feature</h3>
+  <p>The proof runs were not a formality. Each of these produced a green-looking result with wrong output, which is the failure class this whole tool exists to prevent.</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Symptom</th><th>Cause</th><th>Now</th></tr></thead>
+    <tbody>
+      <tr><td><code>back</code> recorded a screen with 2 elements and the capture reported <b>0 CSS custom properties</b></td><td>A hash-routed SPA has nothing in history before the app, so <code>goBack()</code> landed on <code>about:blank</code></td><td><code>back</code> compares the URL afterwards and refuses, naming the page it landed on</td></tr>
+      <tr><td>That blank page became a route in the generated site</td><td>No content floor on a recorded screen</td><td>Below 12 visible elements - the same floor the render gate uses - the run stops and suggests a longer <code>--wait</code></td></tr>
+      <tr><td>Tokens came back empty, so the theme was fully inferred</td><td>The final <code>PROBE</code> read whichever screen the run ended on, not the entry route, despite the comment saying otherwise</td><td>Navigates back to the entry URL before the design read. True for the crawler too.</td></tr>
+      <tr><td><code>type budget into Search</code> was collapsed into a revisit</td><td>The content signature digests headings and labels, so it cannot see a filtered list - which is the entire point of typing into a search box</td><td>A typing step always records, like <code>capture as</code></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="note info"><b>The pattern</b>Every one of these was a silent wrong answer rather than a crash. The fix in each case is the same shape: check the thing you assumed, and stop with a sentence that names the cause and the next move.</div>
+
+  <h3>The instruction language</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Instruction</th><th>Does</th><th>Records a screen</th></tr></thead>
+    <tbody>
+      <tr><td><code>click &lt;target&gt;</code></td><td>Clicks the matching element</td><td>Yes</td></tr>
+      <tr><td><code>type &lt;text&gt; into &lt;target&gt;</code></td><td>Fills an input through the native setter</td><td>Yes</td></tr>
+      <tr><td><code>fill &lt;target&gt; with &lt;text&gt;</code></td><td>The same, said the other way round</td><td>Yes</td></tr>
+      <tr><td><code>wait &lt;ms&gt;</code> / <code>wait &lt;n&gt; s</code></td><td>Pauses</td><td>No</td></tr>
+      <tr><td><code>capture [as &lt;name&gt;]</code></td><td>Forces a named screen even if content repeats</td><td>Yes</td></tr>
+      <tr><td><code>goto &lt;url&gt; [as &lt;name&gt;]</code></td><td>Navigates</td><td>Yes</td></tr>
+      <tr><td><code>back</code></td><td>Browser back</td><td>Yes</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Target resolution runs widest-first on visible elements inside the app frame: exact <code>data-testid</code>, then a <code>&lt;label for&gt;</code> for typing targets, then an exact accessible name, then a unique substring. Exact beats substring so <code>click Home</code> cannot select "Home office spend". <b>A substring matching more than one element is rejected, not resolved to the first hit</b> - picking one of three is how a directed capture silently records the wrong screen.</p>
+
+  <h3>A failed step stops the run, and tells you why</h3>
+  <p>This is not an error path bolted on afterwards. It is the discovery mechanism: guess a label, read the refusal, write the real steps. Faster than reading the app's source, and it cannot go stale.</p>
+
+  <pre><code>$ demo-forge capture "https://mango-desert-0f88f590f.7.azurestaticapps.net/" --do "click Home"
+
+capture stopped.
+
+step 1: click Home
+  no clickable element matching "Home".
+  On screen now: "Refresh", "Collapse navigation menu", "Overview", "Project plan",
+  "Tasks", "Team", "Documents", "Configuration", "WatchDog", "Integrations",
+  "Help", "About", "New Project", "Current project: Finance UAT Accelerator..."</code></pre>
+
+  <p>Mia's landing screen is Overview. There is no "Home". Thirty seconds of browser time replaced a guess with the real nav.</p>
+
+  <h3>Revisits are not duplicate routes</h3>
+  <p>Clicking the nav item for the screen you are already on is a real thing a person does, and it is not a second page. The first directed run emitted <code>home</code> and <code>Overview</code> as two byte-identical routes. Directed mode now reuses the crawler's content-signature test: a repeat points the timeline at the screen that already exists and says so out loud.</p>
+
+  <pre><code>&gt; click Overview
+   "Overview" is the screen already captured as "home" - revisit, not a new route</code></pre>
+
+  <p><code>capture as &lt;name&gt;</code> is exempt, because that is an explicit request for a named screen.</p>
+
+  <h3>Verification</h3>
+  <p>Run against the live Mia site, <code>https://mango-desert-0f88f590f.7.azurestaticapps.net/</code>, with five instructions.</p>
+
+  <pre><code>$ demo-forge build "https://mango-desert-0f88f590f.7.azurestaticapps.net/" \
+    --do "click Overview; click Tasks; click Documents; type budget into Search; click Team" \
+    --out /tmp/forge-proof/out --name mia-directed-proof
+
+mode    directed (5 steps)
+  [1] Home - 173 els
+  &gt; click Overview
+     "Overview" is the screen already captured as "home" - revisit, not a new route
+  &gt; click Tasks
+  [2] Tasks - 216 els
+  &gt; click Documents
+  [3] Documents - 359 els
+  &gt; type budget into Search
+  [4] Search budget - 364 els
+  &gt; click Team
+  [5] Team - 130 els
+
+  routes    5        controls  1        tokens    163
+
+design:  canvas #f9fafb   surface #ffffff   text #111827   accent #4f46e5   13px
+
+dist/index.html  168.87 kB | gzip: 53.70 kB
+
+Render gate
+  PASS  route-              els= 51 accent= 7 text=323
+  PASS  route-tasks         els= 50 accent= 3 text=427
+  PASS  route-documents     els= 76 accent= 3 text=958
+  PASS  route-search-budget els= 76 accent= 3 text=958
+  PASS  route-team          els= 35 accent= 3 text=237
+  PASS  audience-guide      els= 41 accent= 4 text=474 home-&gt;/guide/home
+RENDER PASS - 6 screens
+
+BUILD PASS</code></pre>
+
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Check</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>Instructions followed in order</td><td>5 of 5, no fallback to crawling</td></tr>
+      <tr><td>Distinct screens recorded</td><td>5 routes, element counts 173 / 216 / 359 / 364 / 130 - genuinely different content</td></tr>
+      <tr><td>Revisits collapsed</td><td>1, to <code>home</code>, reported on the line it happened</td></tr>
+      <tr><td>Typing</td><td><code>value="budget"</code> present in the captured DOM; the filtered screen recorded separately</td></tr>
+      <tr><td>Design tokens</td><td>163 custom properties; canvas, surface, accent and 13px base all match the source - the four inference bugs stay fixed</td></tr>
+      <tr><td>Production build</td><td>168.87 kB single inlined <code>index.html</code>, gzip 53.70 kB</td></tr>
+      <tr><td>Render gate</td><td>6 of 6 PASS including audience containment</td></tr>
+      <tr><td>Crawl regression</td><td>Re-run afterwards: <code>mode crawl</code>, frame <code>weight=10011 els=183 props=163</code>, 6 routes - identical to before the refactor</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>What is still missing</h3>
+  <p>Recording a live session - you click, it writes the step list - is not built. Directed capture is the half that exists. The step format is deliberately plain text with one instruction per line so a recorder can emit it later without changing anything downstream.</p>
 </section>
 
 <footer class="doc">

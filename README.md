@@ -25,7 +25,11 @@ node ~/.copilot/skills/demo-forge/tools/demo-forge.mjs doctor
 ## Quick start
 
 ```bash
-# measure, theme, rebuild, gate
+# you know the storyline: give it the clicks
+demo-forge build https://app.example.com --out ./acme-demo \
+  --do "click Overview; click Tasks; click Documents"
+
+# you do not know the app yet: let it crawl
 demo-forge build https://app.example.com --out ./acme-demo --routes 12
 
 # behind a sign-in
@@ -41,6 +45,55 @@ demo-forge verify --project ./acme-demo --render
 demo-forge deploy --project ./acme-demo --name acme-demo \
   --resource-group rg-demos --location westeurope --sku Free --dry-run
 ```
+
+## Driving it yourself
+
+The crawler optimises for coverage. A demo needs a path, so most of the time you
+want to say what the path is:
+
+```bash
+demo-forge capture https://app.example.com \
+  --do "click Overview; click Tasks; type acme into Search; capture as Filtered"
+
+demo-forge capture https://app.example.com --steps ./storyline.txt
+```
+
+| Instruction | Does |
+| --- | --- |
+| `click <target>` | Clicks it. Records a screen. |
+| `type <text> into <target>` | Fills an input. Records a screen. |
+| `fill <target> with <text>` | The same, said the other way round. |
+| `wait <ms>` / `wait <n> s` | Pauses. Records nothing. |
+| `capture [as <name>]` | Forces a named screen, even if the content repeats. |
+| `goto <url> [as <name>]` | Navigates. Records a screen. |
+| `back` | Browser back. Records a screen. |
+
+`back` refuses if going back leaves the application. A hash-routed SPA usually
+has nothing in history before the app itself, so back lands on `about:blank` -
+click the destination directly instead.
+
+You do not need to know the labels first. Guess, and the error tells you:
+
+```
+step 1: click Home
+  no clickable element matching "Home".
+  On screen now: "Refresh", "Overview", "Project plan", "Tasks", "Team",
+  "Documents", "Configuration", "WatchDog", "Integrations", "Help", "About"
+```
+
+A step that cannot be performed **stops the run**. Skipping "click Approve"
+would produce a demo missing the entire point, and report success.
+
+Directed capture runs as one continuous session with **no reset between steps**,
+which is the opposite of what the crawler does. Your steps are a sequence and a
+sequence accumulates state: open a project, then open its documents. The crawler
+resets to the entry URL before every hop because it is guessing and a guess has
+to be reproducible.
+
+Clicking the nav item for the screen you are already on is recorded as a revisit,
+not as a second identical route. The order you asked for is written to
+`capture.json` as a `timeline`, and the narration scaffold is generated from it,
+so the steps you typed become the beats you narrate.
 
 ## The pipeline
 
@@ -103,10 +156,14 @@ that on the first run against any new application, before writing a line of stor
 
 ## Known gaps
 
+- Recording a live session - you click, it writes the step list - is not built. Directed
+  capture is the half of it that exists; the step format is deliberately plain text so a
+  recorder can emit it later.
 - The `--login` and `--profile` authenticated-capture paths have never been exercised
   against a real tenant. Budget time for the first one.
 - Route discovery is proven on single-page applications only. A server-rendered site is a
-  different traversal problem and is unvalidated.
+  different traversal problem and is unvalidated. Directed capture is the workaround:
+  `goto` each URL explicitly.
 - Anything drawn to canvas or WebGL is invisible to the DOM probe and needs a hand-built
   placeholder.
 - The gate proves a page has content. It cannot prove the content is the right content.
@@ -119,7 +176,7 @@ SKILL.md              the contract the agent follows
 agents/               the orchestrating agent, copy to ~/.copilot/agents/
 references/           six reference documents, loaded on demand
 tools/demo-forge.mjs  CLI, eight commands
-tools/lib/            capture, design, scaffold, deploy
+tools/lib/            capture, steps, design, scaffold, deploy
 assets/template/      copied into every generated demo
 docs/architecture.html  how all of it works, with the before and after diffs
 ```

@@ -54,11 +54,19 @@ demo-forge - any URL to a deployed click-through demo
 
   capture <url>              Measure the live app.
       --out <dir>            default ./demo-build/capture
-      --routes <n>           max screens to visit (default 12)
+      --do "<steps>"         drive it yourself: "click Home; click Documents"
+      --steps <file>         the same instructions, one per line
+      --routes <n>           max screens to visit when NOT directed (default 12)
       --viewport <name>      desktop | laptop | tablet | mobile
       --profile <dir>        persistent browser profile, for an app behind a login
       --login                open headed and wait for you to sign in
       --wait <ms>            settle time per screen (default 2500)
+
+      Instructions:  click <target>           type <text> into <target>
+                     fill <target> with <x>   wait <ms>
+                     capture [as <name>]      goto <url> [as <name>]
+                     back
+      Without --do or --steps the crawler picks the screens itself.
 
   design --capture <dir>     Derive tokens + a contrast report from the capture.
       --out <dir>            default <capture>/../design
@@ -86,6 +94,8 @@ demo-forge - any URL to a deployed click-through demo
       --status               list environments for an existing app
 
   build <url>                capture -> design -> scaffold -> verify, in order.
+      --out <dir>            project root (default ./demo-build)
+                             capture/, design/ and app/ are created inside it
       accepts every capture and scaffold flag above
 
   doctor                     Check the toolchain.
@@ -103,19 +113,48 @@ const DEFAULT_ROOT = resolve(process.cwd(), 'demo-build');
 // that insisting on one of them only ever produces a wrong-directory bug.
 const projectDir = () => resolve(String(flag('project', flag('app', join(DEFAULT_ROOT, 'app')))));
 
-async function cmdCapture(url) {
+// --do takes the instructions inline and --steps takes them from a file. Both
+// end up as the same list, so a session you sketched on the command line can be
+// saved to a file later without rewriting it.
+async function loadSteps() {
+  const { parseSteps } = await import('./lib/steps.mjs');
+  const inline = flag('do');
+  const file = flag('steps');
+  let text = '';
+
+  if (file && file !== true) {
+    const p = resolve(String(file));
+    if (!existsSync(p)) die(`--steps file not found: ${p}`);
+    text = await readFile(p, 'utf8');
+  }
+  if (inline && inline !== true) {
+    text += (text ? '\n' : '') + String(inline).split(/\s*;\s*|\s*\n\s*/).join('\n');
+  }
+  if (!text.trim()) return [];
+
+  try {
+    return parseSteps(text);
+  } catch (e) {
+    die(`${e.message}`);
+  }
+}
+
+async function cmdCapture(url, outOverride) {
   if (!url) die('Usage: demo-forge capture <url>');
   const { captureSite } = await import('./lib/capture.mjs');
-  const out = resolve(String(flag('out', join(DEFAULT_ROOT, 'capture'))));
+  const out = resolve(String(outOverride || flag('out', join(DEFAULT_ROOT, 'capture'))));
+  const steps = await loadSteps();
   await mkdir(out, { recursive: true });
 
   say(`\ncapture\n-------`);
   say(`source  ${url}`);
   say(`out     ${out}`);
+  say(`mode    ${steps.length ? `directed (${steps.length} steps)` : 'crawl'}`);
 
   const manifest = await captureSite({
     url,
     outDir: out,
+    steps,
     maxRoutes: Number(flag('routes', 12)),
     viewport: String(flag('viewport', 'desktop')),
     headed: has('headed') || has('login'),
@@ -146,11 +185,11 @@ async function cmdCapture(url) {
   return out;
 }
 
-async function cmdDesign(captureDir) {
+async function cmdDesign(captureDir, outOverride) {
   const dir = resolve(String(captureDir || flag('capture') || join(DEFAULT_ROOT, 'capture')));
   const file = join(dir, 'capture.json');
   if (!existsSync(file)) die(`No capture.json in ${dir}. Run: demo-forge capture <url> --out ${dir}`);
-  const out = resolve(String(flag('out', join(dir, '..', 'design'))));
+  const out = resolve(String(outOverride || flag('out', join(dir, '..', 'design'))));
 
   const { extractDesign } = await import('./lib/design.mjs');
   const r = await extractDesign({ captureFile: file, outDir: out });
@@ -169,11 +208,14 @@ async function cmdDesign(captureDir) {
   return out;
 }
 
-async function cmdScaffold() {
-  const captureDir = resolve(String(flag('capture', join(DEFAULT_ROOT, 'capture'))));
+async function cmdScaffold(captureDirArg, designDirArg, outOverride) {
+  // build chains these directly, so the directory it just produced must win
+  // over the default. Without this, "build --out <dir>" captures into <dir> and
+  // then scaffolds from ./demo-build/capture, which is either stale or absent.
+  const captureDir = resolve(String(captureDirArg || flag('capture', join(DEFAULT_ROOT, 'capture'))));
   if (!existsSync(join(captureDir, 'capture.json'))) die(`No capture.json in ${captureDir}.`);
-  const outDir = resolve(String(flag('out', join(DEFAULT_ROOT, 'app'))));
-  const designDir = resolve(String(flag('design', join(captureDir, '..', 'design'))));
+  const outDir = resolve(String(outOverride || flag('out', join(DEFAULT_ROOT, 'app'))));
+  const designDir = resolve(String(designDirArg || flag('design', join(captureDir, '..', 'design'))));
 
   const { scaffold } = await import('./lib/scaffold.mjs');
   const r = await scaffold({
@@ -282,9 +324,13 @@ async function cmdDeploy() {
 
 async function cmdBuild(url) {
   if (!url) die('Usage: demo-forge build <url>');
-  const captureDir = await cmdCapture(url);
-  await cmdDesign(captureDir);
-  const appDir = await cmdScaffold();
+  // In build, --out names the PROJECT ROOT, not one stage's output. The three
+  // stages each have their own directory under it. Treating --out as a single
+  // directory would point capture and scaffold at the same path.
+  const root = resolve(String(flag('out', DEFAULT_ROOT)));
+  const captureDir = await cmdCapture(url, join(root, 'capture'));
+  await cmdDesign(captureDir, join(root, 'design'));
+  const appDir = await cmdScaffold(captureDir, join(root, 'design'), join(root, 'app'));
 
   say('install\n-------');
   const install = spawnSync('npm', ['install', '--no-audit', '--no-fund'], { cwd: appDir, stdio: 'inherit' });
@@ -337,7 +383,7 @@ const commands = {
 // through to a default path. Kept next to the dispatcher so adding a flag
 // without declaring it here shows up the first time the command is run.
 const FLAGS = {
-  capture: ['out', 'routes', 'wait', 'viewport', 'login', 'profile', 'headed', 'quiet'],
+  capture: ['out', 'routes', 'wait', 'viewport', 'login', 'profile', 'headed', 'quiet', 'do', 'steps'],
   design: ['capture', 'out', 'quiet'],
   scaffold: ['capture', 'design', 'out', 'name', 'force', 'quiet'],
   audience: ['project', 'app', 'label', 'guided', 'alias', 'quiet'],
@@ -348,7 +394,7 @@ const FLAGS = {
   ],
   build: [
     'out', 'routes', 'wait', 'viewport', 'login', 'profile', 'headed',
-    'name', 'quiet', 'skip-install'
+    'name', 'quiet', 'skip-install', 'do', 'steps'
   ],
   doctor: []
 };
@@ -360,4 +406,9 @@ if (!cmd || cmd === 'help' || cmd === '--help' || cmd === '-h') {
 if (!commands[cmd]) die(`Unknown command "${cmd}".${HELP}`);
 checkFlags(FLAGS[cmd] || []);
 
-commands[cmd]().catch(e => die(`${cmd}: ${e.stack || e.message}`));
+commands[cmd]().catch(e => {
+  // A bad instruction is a user error, not a crash. Printing a stack trace for
+  // "you typed a label that is not on the page" buries the one line that helps.
+  if (e?.name === 'StepError') die(`capture stopped.\n\n${e.message}`);
+  die(`${cmd}: ${e.stack || e.message}`);
+});

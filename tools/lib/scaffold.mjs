@@ -256,18 +256,28 @@ ${body.join('\n')}
 
 /* --- narration ------------------------------------------------------------ */
 
-function buildScript(routes) {
-  const steps = routes.slice(0, 10).map((r, i) => {
+function buildScript(routes, timeline = []) {
+  // A directed capture already knows the order the story is told in, including
+  // the moments that return to a screen you have seen. Use it when it exists;
+  // fall back to route order for a crawl, which has no intended sequence.
+  const beats = timeline.length
+    ? timeline.map(t => ({ slug: t.slug, label: t.label, revisit: t.revisit }))
+    : routes.map(r => ({ slug: r.slug, label: r.label, revisit: false }));
+
+  const steps = beats.slice(0, 12).map((b, i) => {
     const target =
       i === 0
         ? `document.querySelector('[data-testid="shell-home"]')`
-        : `document.querySelector('[data-testid="nav-${r.slug}"]')`;
-    const what = r.label === 'Home' ? 'the landing screen' : r.label.toLowerCase();
+        : `document.querySelector('[data-testid="nav-${b.slug}"]')`;
+    const what = b.label === 'Home' ? 'the landing screen' : b.label.toLowerCase();
+    const hint = b.revisit
+      ? `TODO: you come back to ${js(what)} here. Say what changed since last time, or why the comparison matters.`
+      : `TODO: say why ${js(what)} matters to this audience. Name the decision it supports, not the button being pressed.`;
     return `  {
     target: () => ${target},
     event: 'click',
     kicker: 'Step ${i + 1}',
-    script: 'TODO: say why ${js(what)} matters to this audience. Name the decision it supports, not the button being pressed.'
+    script: '${hint}'
   }`;
   });
 
@@ -422,7 +432,7 @@ export async function scaffold({ captureDir, outDir, designDir, name, force = fa
   }
   await writeFile(join(outDir, 'src/routes/index.jsx'), buildRouteIndex(routes));
   await writeFile(join(outDir, 'src/data/seed.js'), buildSeed(capture, routes));
-  await writeFile(join(outDir, 'src/demo/scripts/default.js'), buildScript(routes));
+  await writeFile(join(outDir, 'src/demo/scripts/default.js'), buildScript(routes, capture.timeline || []));
   await writeFile(
     join(outDir, 'src/demo/scripts/index.js'),
     `/* Narration modules, one per audience.

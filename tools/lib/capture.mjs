@@ -26,6 +26,9 @@ const VIEWPORTS = {
 
 const ASSET_TYPES = new Set(['image', 'font', 'stylesheet']);
 const MAX_ASSET_BYTES = 8 * 1024 * 1024;
+// Matches the floor the generated app's render gate uses. A screen below this
+// is a blank page, a loading state, or somewhere that is not the app at all.
+const MIN_SCREEN_ELEMENTS = 12;
 
 export const slugify = s =>
   String(s || 'route')
@@ -429,6 +432,134 @@ async function settle(page, ms = 900) {
   await page.waitForTimeout(ms);
 }
 
+/* ---------------------------------------------------------------------------
+ * Screen recording
+ *
+ * Shared by the autonomous crawler and by directed capture, so the two modes
+ * cannot drift into producing different manifest shapes. The scaffold reads
+ * one shape and does not care which mode produced it.
+ * ------------------------------------------------------------------------- */
+async function recordScreen({ page, frame, data, label, via, outDir, routes, slugHint }) {
+  const base = slugify(slugHint || (label === 'Home' ? 'home' : label));
+  let slug = base;
+  // Directed steps can legitimately revisit a label ("click Home" twice around
+  // a detour). Suffix rather than overwrite, or the second visit silently
+  // clobbers the screenshot of the first.
+  for (let n = 2; routes.some(r => r.slug === slug); n++) slug = `${base}-${n}`;
+
+  const shot = `screens/${slug}.png`;
+  await page.screenshot({ path: join(outDir, shot), fullPage: false }).catch(() => {});
+  await page
+    .screenshot({ path: join(outDir, `screens/${slug}-full.png`), fullPage: true })
+    .catch(() => {});
+
+  const html = await frame.evaluate(() => document.body.outerHTML).catch(() => '');
+  await writeFile(join(outDir, `dom/${slug}.html`), html);
+  await writeFile(join(outDir, `dom/${slug}.outline.json`), JSON.stringify(data.outline, null, 2));
+
+  const route = {
+    slug,
+    label,
+    via,
+    url: data.url,
+    title: data.title,
+    screenshot: shot,
+    fullScreenshot: `screens/${slug}-full.png`,
+    outlineFile: `dom/${slug}.outline.json`,
+    domFile: `dom/${slug}.html`,
+    visibleElements: data.visibleElements,
+    headings: data.headings,
+    tables: data.tables,
+    images: data.images,
+    painted: data.painted,
+    navCandidates: data.navCandidates
+  };
+  routes.push(route);
+  return route;
+}
+
+/* ---------------------------------------------------------------------------
+ * Directed capture
+ *
+ * The crawler above resets to the entry URL before every hop, because it is
+ * guessing and a guess has to be reproducible. Directed capture must do the
+ * opposite: your steps are a sequence, and a sequence accumulates state. If
+ * you open a project and then open its documents, resetting between those two
+ * clicks would land you on an empty documents list and record the wrong screen.
+ *
+ * So this runs as one continuous session. The cost is that a failed step
+ * invalidates everything after it, which is exactly why a step that cannot be
+ * performed throws instead of continuing.
+ * ------------------------------------------------------------------------- */
+async function runDirected({ page, steps, outDir, routes, controls, waitMs, verbose }) {
+  const { runStep } = await import('./steps.mjs');
+  const signatures = new Map();
+  const timeline = [];
+
+  const record = async (label, via, { force = false } = {}) => {
+    const frame = await findAppFrame(page);
+    let data;
+    try {
+      data = await frame.evaluate(PROBE);
+    } catch (e) {
+      throw new Error(`could not read the page after "${label}": ${String(e).slice(0, 160)}`);
+    }
+
+    // Clicking the nav item for the screen you are already on is a real thing a
+    // person does, and it is not a second page. Emitting it as one would put two
+    // byte-identical routes into the generated site. Record the visit in the
+    // timeline, point it at the screen that already exists, and say so - the
+    // crawler reaches the same conclusion by the same signature test.
+    const prior = signatures.get(data.contentSignature);
+    if (prior && !force) {
+      controls.push({ label, effect: 'content unchanged', sameContentAs: prior });
+      timeline.push({ label, slug: prior, via, revisit: true });
+      if (verbose) {
+        console.log(`     "${label}" is the screen already captured as "${prior}" - revisit, not a new route`);
+      }
+      return null;
+    }
+
+    // A screen with almost nothing on it is not a screen. Recording it would
+    // put an empty route into the generated site and, if it is the last one,
+    // hand the design stage a blank page to read tokens from. The render gate
+    // downstream uses the same floor, so failing here saves a whole pipeline.
+    if (data.visibleElements < MIN_SCREEN_ELEMENTS) {
+      throw new Error(
+        `"${label}" rendered only ${data.visibleElements} visible elements at ${data.url}.\n` +
+          `  That is not a screen. The step before it probably navigated away from the app,\n` +
+          `  or the app had not finished rendering - try a longer --wait.`
+      );
+    }
+
+    const route = await recordScreen({ page, frame, data, label, via, outDir, routes });
+    signatures.set(data.contentSignature, route.slug);
+    timeline.push({ label, slug: route.slug, via, revisit: false });
+    if (verbose) console.log(`  [${routes.length}] ${label} - ${data.visibleElements} els`);
+    return route;
+  };
+
+  await record('Home', 'entry');
+
+  for (const step of steps) {
+    if (verbose) console.log(`  > ${step.raw}`);
+    const frame = await findAppFrame(page);
+    const res = await runStep(page, frame, step, { waitMs, settle });
+    if (res.extra) {
+      console.log(`     note: ${res.extra + 1} elements matched "${step.target}", used the first`);
+    }
+    // "capture as X" is an explicit request for a named screen. A typing step is
+    // the same case for a different reason: the content signature digests
+    // headings and labels, so it is deliberately blind to a filtered list - the
+    // very thing you type into a search box to demonstrate. Both are taken at
+    // their word even when the signature repeats.
+    const force = step.verb === 'capture' || step.verb === 'fill';
+    if (res.recorded) await record(res.label, `step:${step.verb}`, { force });
+  }
+
+  return timeline;
+}
+
 export async function captureSite(options) {
   const {
     url,
@@ -440,6 +571,7 @@ export async function captureSite(options) {
     storageState = null,
     waitMs = 2500,
     manualLogin = false,
+    steps = [],
     verbose = true
   } = options;
 
@@ -525,7 +657,17 @@ export async function captureSite(options) {
   const controls = [];
   const visited = new Set();
   const signatures = new Map();
-  const queue = [{ label: 'Home', via: 'entry' }];
+  // The order you asked for, including revisits. The crawler has no equivalent
+  // because it has no intended order - it reports what it found, not a story.
+  let timeline = [];
+  // Directed mode leaves the queue empty so the crawler below never runs. The
+  // two modes answer different questions and must not be mixed in one pass.
+  const queue = steps.length ? [] : [{ label: 'Home', via: 'entry' }];
+
+  if (steps.length) {
+    if (verbose) console.log(`  directed: ${steps.length} step${steps.length === 1 ? '' : 's'}`);
+    timeline = await runDirected({ page, steps, outDir, routes, controls, waitMs, verbose });
+  }
 
   while (queue.length && routes.length < maxRoutes) {
     const job = queue.shift();
@@ -595,34 +737,7 @@ export async function captureSite(options) {
     }
     signatures.set(data.contentSignature, job.label);
 
-    const slug = slugify(job.label === 'Home' ? 'home' : job.label);
-    const shot = `screens/${slug}.png`;
-    await page.screenshot({ path: join(outDir, shot), fullPage: false }).catch(() => {});
-    await page
-      .screenshot({ path: join(outDir, `screens/${slug}-full.png`), fullPage: true })
-      .catch(() => {});
-
-    const html = await frame.evaluate(() => document.body.outerHTML).catch(() => '');
-    await writeFile(join(outDir, `dom/${slug}.html`), html);
-    await writeFile(join(outDir, `dom/${slug}.outline.json`), JSON.stringify(data.outline, null, 2));
-
-    routes.push({
-      slug,
-      label: job.label,
-      via: job.via,
-      url: data.url,
-      title: data.title,
-      screenshot: shot,
-      fullScreenshot: `screens/${slug}-full.png`,
-      outlineFile: `dom/${slug}.outline.json`,
-      domFile: `dom/${slug}.html`,
-      visibleElements: data.visibleElements,
-      headings: data.headings,
-      tables: data.tables,
-      images: data.images,
-      painted: data.painted,
-      navCandidates: data.navCandidates
-    });
+    await recordScreen({ page, frame, data, label: job.label, via: job.via, outDir, routes });
     if (verbose) console.log(`  [${routes.length}/${maxRoutes}] ${job.label} - ${data.visibleElements} els`);
 
     if (routes.length === 1) {
@@ -646,12 +761,22 @@ export async function captureSite(options) {
   }
 
   // The design system is read from the entry route: it is the one guaranteed to
-  // have the shell mounted with every token resolved.
+  // have the shell mounted with every token resolved. Both loops leave the page
+  // wherever they finished, so go back there explicitly rather than reading
+  // whichever screen happened to be last - a directed run that ends on a dialog,
+  // or anywhere off the app, would otherwise hand the design stage a blank page.
+  if (page.url() !== url) {
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {});
+    await settle(page, waitMs);
+  }
   const entryFrame = await findAppFrame(page);
   const entry = await entryFrame.evaluate(PROBE).catch(() => null);
 
   const manifest = {
     capturedAt: new Date().toISOString(),
+    mode: steps.length ? 'directed' : 'crawl',
+    steps: steps.map(s => s.raw),
+    timeline,
     source: { url, viewport, viewportSize: vp },
     app: {
       title: entry?.title || routes[0]?.title || '',

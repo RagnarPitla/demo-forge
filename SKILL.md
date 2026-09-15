@@ -77,13 +77,44 @@ the thing to re-read when the demo starts growing extra screens.
 
 ## Stage 2 - capture
 
+The capture has two modes. Pick on purpose.
+
+**Crawl** - you do not know the app yet. It walks the navigation itself and
+reports what it found.
+
 ```bash
 node $DF capture "<url>" --out ./demo-build/capture --routes 8
 ```
 
-This drives a real browser, visits the app, walks its navigation, and records
-what is actually painted: computed styles, resolved CSS custom properties, a
-semantic outline per route, full-page screenshots, downloaded assets.
+**Directed** - you know what the demo has to show. You give the clicks, it
+follows them in order.
+
+```bash
+node $DF capture "<url>" --out ./demo-build/capture \
+  --do "click Overview; click Tasks; click Documents"
+
+# or, once the sequence is longer than a command line
+node $DF capture "<url>" --steps ./storyline.txt
+```
+
+Instructions: `click <target>`, `type <text> into <target>`,
+`fill <target> with <text>`, `wait <ms>`, `capture [as <name>]`,
+`goto <url> [as <name>]`, `back`. Quote a label that contains spaces or that is
+a prefix of another label.
+
+Use directed whenever the storyline is known, which is most of the time with a
+customer. The crawler optimises for coverage; a demo needs a path. Directed
+capture also writes a `timeline` into the manifest, and the narration scaffold
+is generated from that timeline rather than from route order - so the steps you
+typed become the beats you narrate, revisits included.
+
+A step that cannot be performed stops the run and prints every clickable label
+on screen. That listing is the fastest way to find the real labels: guess once,
+read the error, write the real steps.
+
+This drives a real browser, visits the app, and records what is actually
+painted: computed styles, resolved CSS custom properties, a semantic outline per
+route, full-page screenshots, downloaded assets.
 
 Two things about it are worth understanding, because both bite.
 
@@ -99,8 +130,8 @@ to reuse a stored session across runs.
 
 Read the summary it prints. `routes` is how many distinct views it found;
 `controls` is the things it clicked that turned out to mutate the view rather
-than navigate. If routes is 1, the crawler could not find navigation and you
-should capture the routes manually rather than trusting what comes next.
+than navigate. If routes is 1 after a crawl, the crawler could not find
+navigation - switch to `--do` and drive it yourself.
 
 ## Stage 3 - design
 

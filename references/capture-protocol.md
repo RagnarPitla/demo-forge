@@ -44,6 +44,128 @@ those are caught and skipped rather than crashing the run.
 Run with `--headed` and the chosen frame is printed with its score and the runners
 up. If the capture comes back nearly empty, read that line first.
 
+## Two modes, and why they are not the same code path
+
+**Crawl** answers "what is in this app". **Directed** answers "show me this".
+They need opposite behaviour at the one point that matters, so they are separate
+loops rather than one loop with a flag.
+
+The crawler **resets to the entry URL before every hop**. It is guessing, and a
+guess has to be reproducible; an SPA's state machine is not guaranteed
+reversible, so replaying from a known start is the only way to get a
+deterministic capture.
+
+Directed capture **never resets**. Your steps are a sequence and a sequence
+accumulates state. "Open the project, then open its documents" is two clicks
+that depend on each other. Reset between them and the second click lands on an
+empty documents list, and the capture records the wrong screen while reporting
+success.
+
+The cost of not resetting is that a failed step invalidates every step after it.
+That is why a step that cannot be performed throws instead of continuing.
+
+## Directed capture
+
+```bash
+node $DF capture "<url>" --do "click Overview; click Tasks; click Documents"
+node $DF capture "<url>" --steps ./storyline.txt
+```
+
+| Instruction | Does |
+| --- | --- |
+| `click <target>` | Clicks the matching element. Records a screen. |
+| `type <text> into <target>` | Fills an input. Records a screen. |
+| `fill <target> with <text>` | The same thing, said the other way round. |
+| `wait <ms>` / `wait <n> s` | Pauses. Records nothing. |
+| `capture [as <name>]` | Forces a named screen, even if the content repeats. |
+| `goto <url> [as <name>]` | Navigates. Records a screen. |
+| `back` | Browser back. Records a screen. |
+
+Blank lines and `#` comments are ignored, so a step file can be commented like
+the script it is going to become.
+
+### Target resolution
+
+Widest-first, inside the app frame, on visible elements only:
+
+1. exact `[data-testid]`
+2. a `<label for>` pointing at the input (typing targets only)
+3. exact accessible name - `aria-label`, `placeholder`, `title`, `name`, then text
+4. unique substring
+
+Exact beats substring so `click Home` does not select "Home office spend". A
+substring that matches more than one element is **rejected**, not resolved to
+the first hit - picking one of three is how a directed capture silently records
+the wrong screen. Quote the exact label to disambiguate.
+
+The resolver is passed to Playwright as a function, never as a string through
+`eval()`. A page with a strict Content-Security-Policy blocks `eval`, and that
+is exactly the kind of well-built app this is most likely to be pointed at.
+
+### A failed step stops the run
+
+```
+step 1: click Home
+  no clickable element matching "Home".
+  On screen now: "Refresh", "Overview", "Project plan", "Tasks", "Team",
+  "Documents", "Configuration", "WatchDog", "Integrations", "Help", "About"
+```
+
+That listing is the discovery mechanism. Guess once, read the error, write the
+real steps. It is faster than reading the app's source and it cannot go stale.
+
+### Revisits are not duplicate routes
+
+Clicking the nav item for the screen you are already on is a real thing a person
+does, and it is not a second page. When a step produces a content signature that
+has already been recorded, the capture points the timeline entry at the existing
+slug and says so, rather than emitting two byte-identical routes into the
+generated site:
+
+```
+> click Overview
+   "Overview" is the screen already captured as "home" - revisit, not a new route
+```
+
+`capture as <name>` is exempt, because that is an explicit request for a named
+screen. So is a typing step: the signature digests headings and labels, which
+makes it deliberately blind to a filtered list - the very thing you type into a
+search box to demonstrate.
+
+### Guards found by using it
+
+Three things the first proof runs exposed, all of which now fail loudly:
+
+**`back` can walk off the application.** A hash-routed SPA usually has nothing
+in history before the app itself, so `goBack()` lands on `about:blank`. That
+recorded a 2-element screen and then handed the design stage a blank page to
+read tokens from, producing zero custom properties and a fully inferred theme.
+`back` now checks the URL afterwards and refuses if it left the app.
+
+**A screen below 12 visible elements is not a screen.** Same floor the generated
+app's render gate uses. Below it, the step before probably navigated away or the
+app had not finished rendering - the error says both, and suggests a longer
+`--wait`.
+
+**The design read must return to the entry route.** Both loops leave the page
+wherever they finished. The final `PROBE` used to read whatever that was. It now
+navigates back to the entry URL first, which is what the surrounding comment
+always claimed it did.
+
+### The timeline
+
+Directed mode writes `mode`, `steps` and `timeline` into `capture.json`. The
+timeline is the order you asked for, revisits included:
+
+```json
+{ "label": "Overview", "slug": "home", "via": "step:click", "revisit": true }
+```
+
+The scaffold generates the narration outline from the timeline when it exists,
+so the beats match the clicks you specified. A revisit gets a different prompt -
+"say what changed since last time" rather than "say why this matters" - because
+the second visit to a screen is a different sentence.
+
 ## Route discovery, and the toggle trap
 
 The crawler seeds its queue from the entry route's navigation candidates, then
