@@ -227,6 +227,67 @@ export const DataTable = ({ headers = [], rows = [], testid }) => (
   </Card>
 );
 
+/* A screen the block classifier could not read, shown as what was captured.
+ *
+ * The classifier looks for tables, stat tiles, lists and cards. A Fluent or
+ * Material app draws all four out of nested divs, so a screen can be rich and
+ * still classify as nothing - and the honest thing to put on a demo screen in
+ * that case is the screenshot the capture already took, not a note telling the
+ * viewer the screen is missing. It is pixel-faithful immediately and can be
+ * replaced by real components one screen at a time, without the demo ever
+ * being unshowable in between.
+ */
+export const Shot = ({ src, alt, note, hotspots = [], onNavigate }) => (
+  <figure style={{ margin: 0 }}>
+    <div style={{ position: 'relative', lineHeight: 0 }}>
+      <img
+        src={src}
+        alt={alt}
+        loading="lazy"
+        style={{
+          display: 'block',
+          width: '100%',
+          height: 'auto',
+          borderRadius: 'var(--radius-lg, 10px)',
+          border: '1px solid var(--color-border)',
+          background: 'var(--color-canvas)'
+        }}
+      />
+      {/* The control that was really clicked here, in the place it really was.
+          Positioned in percentages so it tracks the image at any width. */}
+      {hotspots.map((h, i) => (
+        <button
+          key={i}
+          type="button"
+          className="shot-hotspot"
+          data-testid={`hotspot-${h.to}`}
+          onClick={() => onNavigate && onNavigate(h)}
+          aria-label={h.label}
+          title={h.label}
+          style={{
+            position: 'absolute',
+            left: `${(h.x / h.vw) * 100}%`,
+            top: `${(h.y / h.vh) * 100}%`,
+            width: `${(h.w / h.vw) * 100}%`,
+            height: `${(h.h / h.vh) * 100}%`
+          }}
+        />
+      ))}
+    </div>
+    {note ? (
+      <figcaption
+        style={{
+          marginTop: 10,
+          fontSize: 'var(--text-sm, 12px)',
+          color: 'var(--color-text-secondary)'
+        }}
+      >
+        {note}
+      </figcaption>
+    ) : null}
+  </figure>
+);
+
 export const Empty = ({ title, body }) => (
   <Card padding={32} style={{ textAlign: 'center' }}>
     <SectionLabel>Not reconstructed yet</SectionLabel>

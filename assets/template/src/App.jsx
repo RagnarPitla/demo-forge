@@ -75,6 +75,13 @@ export default function App() {
   const normalised = innerPath === '' ? '/' : innerPath;
   const route =
     routes.find(r => r.path === normalised) ||
+    // Inside an audience, scopedPath('/') deliberately gives the sub-site home
+    // a URL of its own - `<prefix>/home` - so that pressing Home is a real
+    // navigation instead of a no-op back to the bare prefix. Nothing registers
+    // `/home`, so it has to be inverted here or every guided audience opens on
+    // "No such screen". The exact match above runs first, so a captured screen
+    // that genuinely claimed /home still wins.
+    (normalised === '/home' ? routes.find(r => r.path === '/') : null) ||
     routes.find(r => r.path !== '/' && normalised.startsWith(`${r.path}/`)) ||
     null;
 

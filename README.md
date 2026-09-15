@@ -159,8 +159,10 @@ that on the first run against any new application, before writing a line of stor
 - Recording a live session - you click, it writes the step list - is not built. Directed
   capture is the half of it that exists; the step format is deliberately plain text so a
   recorder can emit it later.
-- The `--login` and `--profile` authenticated-capture paths have never been exercised
-  against a real tenant. Budget time for the first one.
+- Conditional access is a manual moment. `--edge-profile` carries a signed-in session in,
+  but a tenant that demands a phone approval will demand one here too, on the first run.
+  Run that one with `--headed`, tick "Don't ask again", and the clone keeps the session for
+  subsequent runs.
 - Route discovery is proven on single-page applications only. A server-rendered site is a
   different traversal problem and is unvalidated. Directed capture is the workaround:
   `goto` each URL explicitly.

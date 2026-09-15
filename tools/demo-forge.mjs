@@ -58,6 +58,13 @@ demo-forge - any URL to a deployed click-through demo
       --steps <file>         the same instructions, one per line
       --routes <n>           max screens to visit when NOT directed (default 12)
       --viewport <name>      desktop | laptop | tablet | mobile
+      --edge-profile <who>   reuse an Edge profile you are already signed into,
+                             by account email or "Profile 16". Copies the session
+                             out; never opens or locks your live browser.
+      --chrome-profile <who> the same, for Google Chrome
+      --fresh-profile        re-copy the profile instead of reusing the clone,
+                             which discards any sign-in the clone has done
+      --browser <channel>    msedge | chrome | chromium
       --profile <dir>        persistent browser profile, for an app behind a login
       --login                open headed and wait for you to sign in
       --wait <ms>            settle time per screen (default 2500)
@@ -146,10 +153,31 @@ async function cmdCapture(url, outOverride) {
   const steps = await loadSteps();
   await mkdir(out, { recursive: true });
 
+  // Reuse a browser profile you are already signed into, without opening or
+  // locking it. The clone is the reason this works while Edge is running.
+  const channel = flag('browser') ? String(flag('browser')) : null;
+  const useProfile = flag('edge-profile') || flag('chrome-profile');
+  let profileDir = flag('profile') ? resolve(String(flag('profile'))) : null;
+  let launchChannel = channel;
+
+  if (useProfile && useProfile !== true) {
+    const { cloneProfile } = await import('./lib/profile.mjs');
+    launchChannel = channel || (flag('chrome-profile') ? 'chrome' : 'msedge');
+    const dir = profileDir || join(resolve(out, '..'), 'browser-profile');
+    const r = await cloneProfile({
+      channel: launchChannel,
+      profile: String(useProfile),
+      outDir: dir,
+      fresh: has('fresh-profile')
+    }).catch(e => die(e.message));
+    profileDir = r.userDataDir;
+  }
+
   say(`\ncapture\n-------`);
   say(`source  ${url}`);
   say(`out     ${out}`);
   say(`mode    ${steps.length ? `directed (${steps.length} steps)` : 'crawl'}`);
+  if (launchChannel) say(`browser ${launchChannel}`);
 
   const manifest = await captureSite({
     url,
@@ -159,7 +187,8 @@ async function cmdCapture(url, outOverride) {
     viewport: String(flag('viewport', 'desktop')),
     headed: has('headed') || has('login'),
     manualLogin: has('login'),
-    profileDir: flag('profile') ? resolve(String(flag('profile'))) : null,
+    profileDir,
+    browserChannel: launchChannel,
     waitMs: Number(flag('wait', 2500))
   });
 
@@ -383,7 +412,8 @@ const commands = {
 // through to a default path. Kept next to the dispatcher so adding a flag
 // without declaring it here shows up the first time the command is run.
 const FLAGS = {
-  capture: ['out', 'routes', 'wait', 'viewport', 'login', 'profile', 'headed', 'quiet', 'do', 'steps'],
+  capture: ['out', 'routes', 'wait', 'viewport', 'login', 'profile', 'headed', 'quiet', 'do', 'steps',
+            'browser', 'edge-profile', 'chrome-profile', 'fresh-profile'],
   design: ['capture', 'out', 'quiet'],
   scaffold: ['capture', 'design', 'out', 'name', 'force', 'quiet'],
   audience: ['project', 'app', 'label', 'guided', 'alias', 'quiet'],
@@ -394,7 +424,8 @@ const FLAGS = {
   ],
   build: [
     'out', 'routes', 'wait', 'viewport', 'login', 'profile', 'headed',
-    'name', 'quiet', 'skip-install', 'do', 'steps'
+    'name', 'quiet', 'skip-install', 'do', 'steps',
+    'browser', 'edge-profile', 'chrome-profile', 'fresh-profile'
   ],
   doctor: []
 };

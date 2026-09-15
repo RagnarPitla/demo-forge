@@ -124,7 +124,22 @@ frame on the page and picks the one that actually holds the application, which
 is why it works on `apps.powerapps.com` URLs where naive scraping returns an
 empty shell. See `references/capture-protocol.md`.
 
-**Authenticated apps need a login pass.** Add `--login` and the browser opens
+**Authenticated apps: reuse the browser you are already signed into.**
+`--edge-profile ragnar@contoso.com` finds that profile, copies the parts that
+carry the session into a scratch directory, and launches real Edge against the
+copy. Your live browser is never opened, locked or modified - which also means
+this works while Edge is running. Use `--chrome-profile` for Chrome.
+
+Conditional access still applies on the first run. Do that one with `--headed`,
+approve on your phone, tick "Don't ask again", and the clone keeps the session;
+later runs go straight in. Pass `--fresh-profile` to discard it and re-copy.
+
+Write the sign-in steps as `try` steps. Entra shows an account picker only when
+the browser cannot infer the account, and a phone approval only when policy says
+so, so those screens are a set of maybes rather than a sequence. A `try` step
+that cannot run is skipped, and never becomes a screen in the demo.
+
+**The older ways still work.** Add `--login` and the browser opens
 headed and waits for you to sign in before it starts, or use `--profile <dir>`
 to reuse a stored session across runs.
 

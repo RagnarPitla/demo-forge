@@ -145,8 +145,8 @@ function collectBlocks(node, route, depth = 0, out = []) {
 function buildRouteComponent(route, index) {
   const name = pascal(route.slug);
   const heads = (route.headings || []).filter(h => h && h.length > 1);
-  const title = heads[0] || route.label || 'Screen';
-  const subtitle = heads.find(h => h !== title && h.length > 24 && h.length < 220) || null;
+  let title = heads[0] || route.label || 'Screen';
+  let subtitle = heads.find(h => h !== title && h.length > 24 && h.length < 220) || null;
 
   let outline = null;
   try {
@@ -219,11 +219,39 @@ function buildRouteComponent(route, index) {
     );
   });
 
+  // A reconstruction has to be better than the screenshot to be worth showing,
+  // and a lone panel is not. Panels are the classifier's last resort: text it
+  // found but could not place, which on a Fluent app means chrome like "Send
+  // feedback" and a heading cut in half. Tables, stat grids and card grids are
+  // the three shapes it rebuilds faithfully, so require one of them - otherwise
+  // the screen is demonstrably a worse copy than the capture already sitting on
+  // disk, and the viewer is the one who pays for it.
+  const faithful =
+    tables.length > 0 || blocks.some(b => b.kind === 'stats' || b.kind === 'cards');
+  if (!faithful) {
+    body.length = 0;
+    // The screenshot already carries the app's own heading, so repeating it
+    // above the image is at best redundant. It is also the heading most likely
+    // to be stale - an editable title often keeps its placeholder in the DOM
+    // long after the visible text has changed, which is how a finished screen
+    // ends up captioned "Untitled". The step's name is what the author called
+    // this moment, and it is right by construction.
+    title = route.label || title;
+    subtitle = null;
+  }
+
+  // Nothing worth showing. Show the screen that was actually captured rather
+  // than a note saying there isn't one - see the Shot primitive for why.
   if (!body.length) {
     body.push(
-      `      <Empty\n` +
-        `        title="${jsx(title)}"\n` +
-        `        body="The capture recorded this screen but did not find structure it could classify. Open capture/screens/${route.slug}.png and build it out here."\n` +
+      `      <Shot\n` +
+        `        src={SHOTS['${js(route.slug)}']}\n` +
+        `        alt="${jsx(route.label)} in the source application"\n` +
+        `        hotspots={${JSON.stringify(
+          (route.hotspots || []).map(h => ({ ...h, path: routePath(h.to) }))
+        )}}\n` +
+        `        onNavigate={h => navigate(h.path)}\n` +
+        `        note="${jsx(hotspotNote(route))}"\n` +
         `      />`
     );
   }
@@ -237,7 +265,8 @@ function buildRouteComponent(route, index) {
  * unless you re-run \`demo-forge scaffold --force\`.
  */
 import React from 'react';
-import { PageHeader, Card, Grid, StatTile, DataTable, SectionLabel, Button, Pill, Empty } from '../shell/primitives.jsx';
+import { PageHeader, Card, Grid, StatTile, DataTable, SectionLabel, Button, Pill, Empty, Shot } from '../shell/primitives.jsx';
+import { SHOTS } from '../demo/shots.js';
 import { SEED } from '../data/seed.js';
 
 export default function ${name}({ navigate }) {
@@ -255,6 +284,16 @@ ${body.join('\n')}
 }
 
 /* --- narration ------------------------------------------------------------ */
+
+// What to tell the viewer under a screenshot-backed screen. If the screen has
+// hotspots, say so - an unannounced clickable region gets missed.
+function hotspotNote(route) {
+  const n = (route.hotspots || []).length;
+  if (!n) return 'Captured from the live app.';
+  return n === 1
+    ? 'Captured from the live app. Click the highlighted control to continue.'
+    : `Captured from the live app. ${n} highlighted controls are live.`;
+}
 
 function buildScript(routes, timeline = []) {
   // A directed capture already knows the order the story is told in, including
@@ -457,6 +496,27 @@ export default SCRIPTS;
   const evidenceDir = join(outDir, 'capture');
   await mkdir(evidenceDir, { recursive: true });
   await cp(captureDir, evidenceDir, { recursive: true, force: true });
+
+  // The screenshots again, this time as data URIs the app can render.
+  //
+  // Not public/: Vite copies that folder through untouched, which would leave
+  // the single-file build depending on sibling .png files and quietly break the
+  // one property that makes these demos easy to hand over - that the whole
+  // thing is one .html you can email. Base64 costs about a third in size and
+  // keeps that property.
+  const shots = [];
+  for (const r of routes) {
+    const from = join(captureDir, 'screens', `${r.slug}.png`);
+    if (!existsSync(from)) continue;
+    const b64 = (await readFile(from)).toString('base64');
+    shots.push(`  '${js(r.slug)}': 'data:image/png;base64,${b64}'`);
+  }
+  await writeFile(
+    join(outDir, 'src/demo/shots.js'),
+    `/* Screens captured from the source app, inlined so the built demo stays a\n` +
+      ` * single self-contained file. Regenerated by \`demo-forge scaffold\`.\n */\n` +
+      `export const SHOTS = {\n${shots.join(',\n')}\n};\n\nexport default SHOTS;\n`
+  );
 
   await writeFile(
     join(outDir, '.gitignore'),

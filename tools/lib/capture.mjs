@@ -539,12 +539,41 @@ async function runDirected({ page, steps, outDir, routes, controls, waitMs, verb
     return route;
   };
 
-  await record('Home', 'entry');
+  let pending = null;
+
+  // The entry screen is the app's first screen, and if you had to sign in to
+  // reach it then the sign-in page is not it. Recording on arrival would put
+  // an account picker - with real email addresses on it - at the front of a
+  // demo meant to be shared. So the entry is recorded lazily, just before the
+  // first step that actually acts on a screen, by which time the optional
+  // sign-in steps have run. Waiting and navigating do not count as acting:
+  // "wait 10 s" is usually how long the redirect takes.
+  let entryRecorded = false;
+  const ensureEntry = async () => {
+    if (entryRecorded) return;
+    entryRecorded = true;
+    await record('Home', 'entry');
+  };
+
+  const actsOnScreen = step =>
+    !step.optional && (step.verb === 'click' || step.verb === 'fill' || step.verb === 'capture');
+
+  if (!steps.some(actsOnScreen)) await ensureEntry();
 
   for (const step of steps) {
+    if (actsOnScreen(step)) await ensureEntry();
     if (verbose) console.log(`  > ${step.raw}`);
     const frame = await findAppFrame(page);
-    const res = await runStep(page, frame, step, { waitMs, settle });
+
+    let res;
+    try {
+      res = await runStep(page, frame, step, { waitMs, settle });
+    } catch (e) {
+      if (!step.optional) throw e;
+      if (verbose) console.log(`     skipped - not on this screen`);
+      continue;
+    }
+
     if (res.extra) {
       console.log(`     note: ${res.extra + 1} elements matched "${step.target}", used the first`);
     }
@@ -554,7 +583,33 @@ async function runDirected({ page, steps, outDir, routes, controls, waitMs, verb
     // very thing you type into a search box to demonstrate. Both are taken at
     // their word even when the signature repeats.
     const force = step.verb === 'capture' || step.verb === 'fill';
-    if (res.recorded) await record(res.label, `step:${step.verb}`, { force });
+
+    // The screen this step acted ON, before recording the one it led to.
+    const from = routes[routes.length - 1];
+
+    // A hotspot is what turns a photograph back into a click-through: the
+    // viewer clicks the same control in the same place and gets the same next
+    // screen. Remember where it was, because the screen it produces may not
+    // arrive on this step - "Save" is the usual case, where the click settles
+    // before the app has finished and the new screen only appears after a wait.
+    if (res.rect && from) pending = { rect: res.rect, label: step.name || step.target, verb: step.verb, from };
+
+    // An optional step is not part of the demo. It may or may not have happened
+    // - that is what made it optional - and a screen that may or may not exist
+    // cannot be a route in a walkthrough that has to play the same way twice.
+    // Signing in and dismissing a banner are the cases this exists for.
+    if (res.recorded && !step.optional) {
+      const to = await record(res.label, `step:${step.verb}`, { force });
+      if (to && pending && pending.from.slug !== to.slug) {
+        (pending.from.hotspots ||= []).push({
+          label: pending.label,
+          verb: pending.verb,
+          to: to.slug,
+          ...pending.rect
+        });
+        pending = null;
+      }
+    }
   }
 
   return timeline;
@@ -569,6 +624,7 @@ export async function captureSite(options) {
     headed = false,
     profileDir = null,
     storageState = null,
+    browserChannel = null,
     waitMs = 2500,
     manualLogin = false,
     steps = [],
@@ -586,14 +642,20 @@ export async function captureSite(options) {
   let context;
   if (profileDir) {
     // A persistent profile is how an authenticated app gets captured: sign in
-    // once by hand with --headed, and every later run reuses the session.
+    // once by hand with --headed, and every later run reuses the session. With
+    // a cloned real profile there is no signing in at all - but it must be
+    // launched by the same browser that sealed the cookies, hence the channel.
     context = await chromium.launchPersistentContext(profileDir, {
       headless: !headed && !manualLogin,
       viewport: vp,
+      ...(browserChannel ? { channel: browserChannel } : {}),
       args: ['--disable-blink-features=AutomationControlled']
     });
   } else {
-    browser = await chromium.launch({ headless: !headed && !manualLogin });
+    browser = await chromium.launch({
+      headless: !headed && !manualLogin,
+      ...(browserChannel ? { channel: browserChannel } : {})
+    });
     context = await browser.newContext({
       viewport: vp,
       ...(storageState && existsSync(storageState) ? { storageState } : {})

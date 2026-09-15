@@ -52,11 +52,39 @@ export function parseSteps(text) {
 
   lines.forEach((raw, i) => {
     const line = i + 1;
-    const s = raw.trim();
+    let s = raw.trim();
     if (!s || s.startsWith('#') || s.startsWith('//')) return;
 
     const step = { line, raw: s };
     let m;
+
+    // "try click Sign in" - a step that is allowed not to happen.
+    //
+    // Sign-in is the reason this exists. A tenant shows an account picker only
+    // when the browser does not already know which account to use, and a "Stay
+    // signed in?" page only sometimes, and a phone approval only when the
+    // policy says so. Those screens are not a sequence, they are a set of
+    // maybes, so a required step list can never describe them. Everywhere else
+    // the strictness is the point and stays: a missing step means the screens
+    // after it are wrong, and a wrong screen recorded as a success is the one
+    // failure this tool must not have.
+    if ((m = s.match(/^(?:try|optional)\s+(.+)$/i))) {
+      const inner = parseSteps(m[1])[0];
+      if (!inner) throw new StepError(`line ${line}: cannot parse "${s}"`, { line, raw: s });
+      return steps.push({ ...inner, line, raw: s, optional: true });
+    }
+
+    // 'click Save as "Creating the agent"' - what the screen is called in the
+    // demo, rather than what you had to click to reach it. Without this a step
+    // that types three sentences into an editor names the route after all three
+    // sentences, because the only label available is the instruction itself.
+    // Only a quoted name counts, so a target that genuinely contains " as " is
+    // still matched whole.
+    let explicitName = null;
+    if ((m = s.match(/^(.*?)\s+as\s+(?:"([^"]+)"|'([^']+)')\s*$/))) {
+      explicitName = m[2] ?? m[3];
+      s = m[1];
+    }
 
     if ((m = s.match(/^click\s+(.+)$/i))) {
       step.verb = 'click';
@@ -94,6 +122,7 @@ export function parseSteps(text) {
       );
     }
 
+    if (explicitName) step.name = explicitName;
     steps.push(step);
   });
 
@@ -194,28 +223,59 @@ function actInPage([target, kind, value]) {
     };
   }
 
+  // Where this element sits on the screen that was just photographed. It is
+  // read before scrollIntoView, because scrolling moves the element relative to
+  // a screenshot that has already been taken - and a hotspot in the wrong place
+  // is worse than no hotspot, since the viewer clicks and nothing happens.
+  const r = el.getBoundingClientRect();
+  const rect =
+    r.width > 0 && r.height > 0 && r.top >= 0 && r.left >= 0 && r.bottom <= window.innerHeight
+      ? {
+          x: r.left,
+          y: r.top,
+          w: r.width,
+          h: r.height,
+          vw: window.innerWidth,
+          vh: window.innerHeight
+        }
+      : null;
+
   el.scrollIntoView({ block: 'center', inline: 'center' });
 
   if (kind === 'type') {
     el.focus();
-    const proto =
-      el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
-    const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
-    // React tracks the previous value on the node and swallows an assignment it
-    // thinks is a no-op, so go through the native setter and then announce the
-    // change the way the browser would.
-    if (setter && (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) {
-      setter.call(el, value);
-    } else {
-      el.textContent = value;
+
+    if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+      // React tracks the previous value on the node and swallows an assignment
+      // it thinks is a no-op, so go through the native setter and then announce
+      // the change the way the browser would.
+      const proto =
+        el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+      const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+      if (setter) setter.call(el, value);
+      else el.value = value;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+      return { ok: true, how, extra, rect };
     }
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-    el.dispatchEvent(new Event('change', { bubbles: true }));
-  } else {
-    el.click();
+
+    // A rich-text editor is not a form field. Lexical, ProseMirror, Slate and
+    // Draft all keep the text in their own model and rewrite the DOM from it,
+    // so assigning textContent is reverted on the next render - and, worse,
+    // reverted silently, leaving a screenshot of an empty box under a step that
+    // reported success. The only input they all believe is a real keystroke,
+    // which has to come from the driver rather than from page script. Select
+    // what is there so the typing replaces it, then hand back to the caller.
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    return { ok: true, how, extra, rect, keyboard: true };
   }
 
-  return { ok: true, how, extra };
+  el.click();
+  return { ok: true, how, extra, rect };
 }
 
 /**
@@ -277,8 +337,21 @@ export async function runStep(page, frame, step, { waitMs = 1200, settle }) {
         );
       }
 
+      // The editor is focused with its contents selected; real keystrokes are
+      // the only thing its model will accept. A small delay keeps editors that
+      // debounce their reconciler from dropping characters.
+      if (result.keyboard) {
+        await page.keyboard.type(step.value ?? '', { delay: 12 });
+      }
+
       await settle(page, waitMs);
-      return { recorded: true, label: step.name || step.target, how: result.how, extra: result.extra };
+      return {
+        recorded: true,
+        label: step.name || step.target,
+        how: result.how,
+        extra: result.extra,
+        rect: result.rect
+      };
     }
 
     default:

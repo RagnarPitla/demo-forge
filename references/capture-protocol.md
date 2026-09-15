@@ -235,3 +235,56 @@ checking by hand before moving on:
 - `diagnostics.consoleErrors` - errors here often explain a blank route.
 - `app.appFrameUrl` - confirms which frame was measured.
 - `controls` - the things that turned out not to be routes. Useful demo affordances even so.
+
+
+## Signing in, and why those steps are `try`
+
+`--edge-profile <email>` resolves the profile by reading each `Preferences` file's
+`account_info[0].email`, copies its cookies, local storage, session storage and
+IndexedDB into a scratch user data directory, and launches real Edge - `channel:
+'msedge'` - against the copy.
+
+Three things make this work, and each one breaks it if missed:
+
+- **It must be the real browser.** On macOS the cookie store is encrypted against
+  a login keychain entry named "Microsoft Edge Safe Storage". Playwright's bundled
+  Chromium cannot read it, so every cookie decrypts to an empty string and the run
+  looks exactly like being signed out.
+- **It must be a copy.** A running browser holds an exclusive lock on its user data
+  directory, so a persistent launch against the live one fails. The copy also means
+  a capture can never corrupt a real profile.
+- **`Local State` comes too.** It sits beside the profiles and holds the encrypted
+  key the cookie store is sealed with. Copy the profile without it and you get the
+  signed-out failure again, from a different cause.
+
+Sign-in steps are written with `try` because Entra does not show a fixed sequence:
+an account picker appears only when the browser cannot infer the account, a phone
+approval only when policy demands one, "Stay signed in?" only sometimes. A required
+step list cannot describe a set of maybes. Everywhere else the strictness stays -
+a missing step means every screen after it is wrong.
+
+A `try` step never becomes a screen. A screen that may or may not exist cannot be
+part of a walkthrough that has to play the same way twice.
+
+## Hotspots
+
+A directed capture records where each clicked control was, as a viewport-relative
+rect measured before any scrolling. The generated demo overlays that rect on the
+screenshot as a button leading to the screen the click produced, which is what
+turns a photograph back into a click-through.
+
+The rect is only kept when the element was fully inside the viewport at click time.
+A hotspot in the wrong place is worse than no hotspot: the viewer clicks and
+nothing happens.
+
+The click that produces a screen is not always the step that recorded it. "Save"
+settles long before the app finishes, so the screen arrives on a later `capture`
+step. The rect is therefore held pending and attached to whichever step next
+produces a new route.
+
+## The entry screen is recorded late
+
+The entry is recorded just before the first non-optional step that clicks, types
+or captures - not on arrival. If you had to sign in to reach the app, the sign-in
+page is not the app's first screen, and an account picker with real email
+addresses on it must never lead a demo that is meant to be shared.

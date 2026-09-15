@@ -28,3 +28,39 @@ button { font-family: inherit; }
 ::selection {
   background: color-mix(in srgb, var(--color-accent) 22%, transparent);
 }
+
+/* Clickable regions on a screenshot-backed screen.
+ *
+ * A screenshot with invisible hotspots is a guessing game, so the affordance
+ * has to be visible without covering the thing it points at: a ring that
+ * breathes, over a wash light enough to read the UI through. Motion stops for
+ * anyone who has asked their system for less of it.
+ */
+.shot-hotspot {
+  appearance: none;
+  border: 2px solid var(--color-accent);
+  border-radius: var(--radius-sm, 6px);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent);
+  cursor: pointer;
+  padding: 0;
+  animation: shot-hotspot-pulse 2s ease-in-out infinite;
+  transition: background 120ms ease, box-shadow 120ms ease;
+}
+
+.shot-hotspot:hover,
+.shot-hotspot:focus-visible {
+  background: color-mix(in srgb, var(--color-accent) 24%, transparent);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-accent) 28%, transparent);
+  animation: none;
+  outline: none;
+}
+
+@keyframes shot-hotspot-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent); }
+  50%      { box-shadow: 0 0 0 9px color-mix(in srgb, var(--color-accent) 6%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shot-hotspot { animation: none; }
+}
