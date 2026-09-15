@@ -1,0 +1,12 @@
+{
+  "routes": [
+    { "route": "/urls", "rewrite": "/urls.html" }
+  ],
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/assets/*", "/screens/*", "*.png", "*.txt"]
+  },
+  "mimeTypes": { ".html": "text/html", ".png": "image/png", ".txt": "text/plain" },
+  "globalHeaders": { "cache-control": "no-store" },
+  "responseOverrides": { "404": { "rewrite": "/index.html" } }
+}

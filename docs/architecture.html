@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demo Forge - how it works</title>
+<style>
+:root{
+  --bg:#faf9f8; --surface:#ffffff; --surface-alt:#f3f2f1; --line:#e1dfdd; --line-strong:#c8c6c4;
+  --text:#201f1e; --text-2:#484644; --text-3:#797775;
+  --accent:#0f6cbd; --accent-2:#115ea3; --accent-soft:#eff6fc;
+  --good:#0e700e; --good-soft:#dff6dd; --warn:#8a6d00; --warn-soft:#fff4ce; --bad:#a4262c; --bad-soft:#fde7e9;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  --radius:6px; --shadow:0 1.6px 3.6px rgba(0,0,0,.08),0 .3px .9px rgba(0,0,0,.06);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+.wrap{display:grid;grid-template-columns:232px minmax(0,1fr);gap:40px;max-width:1280px;margin:0 auto;padding:0 32px 96px}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* distribution banner */
+.dist{background:#3b3a39;color:#fff;font:600 11px/1 var(--sans);letter-spacing:.08em;text-transform:uppercase;padding:9px 32px;text-align:center}
+.dist span{opacity:.72;font-weight:400;letter-spacing:.02em;text-transform:none}
+
+/* side nav */
+.side{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;padding:28px 0 40px;border-right:1px solid var(--line)}
+.side .brand{font:700 13px/1.2 var(--sans);letter-spacing:.02em;margin:0 16px 4px}
+.side .brand small{display:block;font:400 11px/1.4 var(--sans);color:var(--text-3);margin-top:4px;letter-spacing:0}
+.side nav{margin-top:20px}
+.side a{display:block;padding:6px 16px;font-size:12.5px;color:var(--text-2);border-left:2px solid transparent;line-height:1.35}
+.side a:hover{background:var(--surface-alt);text-decoration:none;color:var(--text)}
+.side a.on{border-left-color:var(--accent);color:var(--accent);background:var(--accent-soft);font-weight:600}
+.side .grp{padding:14px 16px 4px;font:700 10px/1 var(--sans);letter-spacing:.09em;text-transform:uppercase;color:var(--text-3)}
+
+/* header */
+header.doc{padding:44px 0 26px;border-bottom:1px solid var(--line);margin-bottom:34px}
+header.doc h1{margin:0;font-size:33px;line-height:1.18;letter-spacing:-.02em;font-weight:700}
+header.doc .sub{margin:12px 0 0;font-size:16px;color:var(--text-2);max-width:74ch}
+.pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+.pill{font:600 11px/1 var(--sans);padding:6px 11px;border-radius:999px;background:var(--surface-alt);color:var(--text-2);border:1px solid var(--line)}
+.pill.on{background:var(--good-soft);color:var(--good);border-color:#b7e3b7}
+.pill.ac{background:var(--accent-soft);color:var(--accent-2);border-color:#cfe4f7}
+
+/* stats */
+.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin:26px 0 8px}
+.stat{background:var(--surface);padding:15px 16px}
+.stat b{display:block;font-size:25px;line-height:1.1;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.stat span{display:block;font-size:11px;color:var(--text-3);margin-top:5px;letter-spacing:.02em}
+
+/* sections */
+section{margin:52px 0 0;scroll-margin-top:20px}
+h2{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);font-weight:700;margin:0 0 6px}
+h2 .n{color:var(--accent);margin-right:8px}
+section > h3{font-size:23px;line-height:1.25;margin:0 0 14px;font-weight:650;letter-spacing:-.01em}
+h4{font-size:14px;margin:26px 0 8px;font-weight:650}
+h5{font-size:12px;margin:18px 0 6px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text-3)}
+p{margin:0 0 12px;max-width:78ch}
+ul,ol{margin:0 0 12px;padding-left:20px;max-width:76ch}
+li{margin:0 0 5px}
+.lede{font-size:16px;color:var(--text-2)}
+
+blockquote.shape{margin:0 0 22px;padding:16px 20px;background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:var(--radius);font-size:15px;color:var(--text-2)}
+blockquote.shape b{color:var(--text)}
+
+/* toc */
+.toc{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px 22px;margin:26px 0}
+.toc ol{columns:2;column-gap:40px;margin:0;padding-left:18px;font-size:13.5px}
+.toc li{margin:0 0 5px;break-inside:avoid}
+
+/* tables */
+table{width:100%;border-collapse:collapse;margin:0 0 16px;font-size:13.5px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+th{text-align:left;font:700 10.5px/1.3 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--text-3);padding:10px 12px;border-bottom:1px solid var(--line);background:var(--surface-alt);vertical-align:bottom}
+td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:none}
+td code,th code{font-size:12px}
+.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+
+code{font:12.5px/1.5 var(--mono);background:var(--surface-alt);padding:1px 5px;border-radius:3px;border:1px solid var(--line)}
+pre{position:relative;margin:0 0 16px;background:#1f1e1d;color:#e8e6e3;border-radius:var(--radius);padding:14px 16px;overflow-x:auto;font:12.5px/1.6 var(--mono);border:1px solid #333130}
+pre code{background:none;border:none;padding:0;color:inherit;font-size:inherit}
+.copy{position:absolute;top:7px;right:7px;font:600 10px/1 var(--sans);letter-spacing:.05em;text-transform:uppercase;color:#b3b0ad;background:#333130;border:1px solid #4a4846;border-radius:4px;padding:5px 8px;cursor:pointer}
+.copy:hover{color:#fff;background:#4a4846}
+.copy.done{color:#8fd68f;border-color:#3f6b3f}
+
+/* tree */
+.tree{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 18px;font:12.5px/1.75 var(--mono);color:var(--text-2);overflow-x:auto;margin:0 0 16px;white-space:pre}
+.tree b{color:var(--text);font-weight:600}
+.tree i{color:var(--text-3);font-style:normal}
+
+/* cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(248px,1fr));gap:14px;margin:0 0 18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:15px 17px;box-shadow:var(--shadow)}
+.card h4{margin:0 0 6px;font-size:13.5px}
+.card p{margin:0;font-size:13px;color:var(--text-2)}
+.card .k{font:700 10px/1 var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);display:block;margin-bottom:7px}
+
+/* decisions */
+.decisions{display:grid;gap:12px;margin:0 0 18px}
+.dec{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:var(--radius);padding:14px 17px}
+.dec h4{margin:0 0 5px;font-size:14px}
+.dec p{margin:0 0 6px;font-size:13.5px;color:var(--text-2)}
+.dec .why{font-size:12.5px;color:var(--text-3)}
+.dec .why b{color:var(--text-2);font-weight:650}
+
+/* callouts */
+.note{border-radius:var(--radius);padding:13px 16px;margin:0 0 16px;font-size:13.5px;border:1px solid}
+.note b{display:block;margin-bottom:3px;font-size:12px;letter-spacing:.05em;text-transform:uppercase}
+.note.warn{background:var(--warn-soft);border-color:#e8d48a;color:#5c4a00}
+.note.bad{background:var(--bad-soft);border-color:#f3c3c6;color:#75161b}
+.note.good{background:var(--good-soft);border-color:#b7e3b7;color:#0b4f0b}
+.note.info{background:var(--accent-soft);border-color:#cfe4f7;color:#0b4577}
+
+/* code compare */
+.code-compare{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0 0 18px}
+.cc{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.cc .hd{font:700 10.5px/1 var(--sans);letter-spacing:.08em;text-transform:uppercase;padding:9px 12px;border-bottom:1px solid var(--line)}
+.cc.before .hd{background:var(--bad-soft);color:#75161b}
+.cc.after .hd{background:var(--good-soft);color:#0b4f0b}
+.cc .body{font:12px/1.65 var(--mono);padding:10px 0;overflow-x:auto;white-space:pre}
+.line{display:block;padding:0 12px}
+.line.del{background:#fdf0f1;color:#75161b}
+.line.add{background:#f0f9f0;color:#0b4f0b}
+.line.keep{color:var(--text-2)}
+.line.focus{background:var(--warn-soft);color:#5c4a00;font-weight:600}
+.fixmeta{font-size:12.5px;color:var(--text-3);margin:-6px 0 12px}
+.fixmeta b{color:var(--text-2);font-weight:650}
+
+/* svg figure */
+figure{margin:0 0 20px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+figure svg{display:block;width:100%;height:auto}
+figcaption{font-size:12px;color:var(--text-3);margin-top:10px;text-align:center}
+
+details.raw-data{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);margin:0 0 16px}
+details.raw-data summary{cursor:pointer;padding:11px 16px;font:650 13px/1 var(--sans);color:var(--text-2);list-style:none}
+details.raw-data summary::-webkit-details-marker{display:none}
+details.raw-data summary::before{content:"\25B8";display:inline-block;margin-right:9px;color:var(--text-3);transition:transform .15s}
+details.raw-data[open] summary::before{transform:rotate(90deg)}
+details.raw-data .in{padding:0 16px 14px;border-top:1px solid var(--line);margin-top:0;padding-top:14px}
+details.raw-data table{margin-bottom:0}
+
+footer.doc{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);font-size:12.5px;color:var(--text-3)}
+footer.doc b{color:var(--text-2)}
+
+.tag{display:inline-block;font:700 10px/1 var(--sans);letter-spacing:.05em;text-transform:uppercase;padding:4px 7px;border-radius:3px;vertical-align:middle}
+.tag.g{background:var(--good-soft);color:var(--good)}
+.tag.w{background:var(--warn-soft);color:var(--warn)}
+.tag.b{background:var(--bad-soft);color:var(--bad)}
+.tag.n{background:var(--surface-alt);color:var(--text-3)}
+
+@media (max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:0;padding:0 20px 64px}
+  .side{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line);margin-bottom:24px}
+  .side nav{display:flex;flex-wrap:wrap;gap:2px}
+  .side .grp{width:100%}
+  .code-compare{grid-template-columns:1fr}
+  .toc ol{columns:1}
+}
+@media print{
+  .side,.copy,.dist{display:none}
+  .wrap{display:block;max-width:none;padding:0}
+  body{background:#fff;font-size:10.5pt}
+  pre{background:#f6f6f6;color:#111;border-color:#ddd}
+  section{page-break-inside:avoid}
+  .code-compare{page-break-inside:avoid}
+  a{color:#111;text-decoration:none}
+  a[href^="http"]::after{content:" (" attr(href) ")";font-size:8pt;color:#666}
+}
+</style>
+</head>
+<body>
+
+<div class="dist">Microsoft internal - engineering reference <span>&nbsp;/&nbsp; contains no customer data, no credentials and no tenant identifiers</span></div>
+
+<div class="wrap">
+<aside class="side">
+  <div class="brand">Demo Forge<small>Architecture and operating manual</small></div>
+  <nav id="sidenav">
+    <div class="grp">Orientation</div>
+    <a href="#sec-1">1. What it is</a>
+    <a href="#sec-2">2. The pipeline</a>
+    <a href="#sec-3">3. What gets built</a>
+    <div class="grp">The stages</div>
+    <a href="#sec-4">4. Intake</a>
+    <a href="#sec-5">5. Capture</a>
+    <a href="#sec-6">6. Design extraction</a>
+    <a href="#sec-7">7. Reconstruction</a>
+    <a href="#sec-8">8. Storyline</a>
+    <a href="#sec-9">9. Verify</a>
+    <a href="#sec-10">10. Deploy</a>
+    <div class="grp">Why it is shaped this way</div>
+    <a href="#sec-11">11. Design decisions</a>
+    <a href="#sec-12">12. Bugs the test found</a>
+    <div class="grp">Using it</div>
+    <a href="#sec-13">13. Command reference</a>
+    <a href="#sec-14">14. Evidence</a>
+    <a href="#sec-15">15. Limits and risks</a>
+    <a href="#sec-16">16. Runbook</a>
+  </nav>
+</aside>
+
+<main>
+<header class="doc">
+  <h1>Demo Forge</h1>
+  <p class="sub">A skill that turns an application URL into a deployed React click-through demo. It measures the real app, adopts the real design tokens, rebuilds the screens, attaches a guided storyline, gates the result in a headless browser, and publishes it to Azure Static Web Apps.</p>
+  <div class="pills">
+    <span class="pill ac">Skill + agent + CLI</span>
+    <span class="pill">Node 22 / Playwright / React 18 / Vite 5</span>
+    <span class="pill">Installed at ~/.copilot/skills/demo-forge</span>
+    <span class="pill on">Verified end to end against the live Mia site</span>
+  </div>
+  <div class="stat-row">
+    <div class="stat"><b>4,319</b><span>lines of tooling</span></div>
+    <div class="stat"><b>7</b><span>pipeline stages</span></div>
+    <div class="stat"><b>8</b><span>CLI commands</span></div>
+    <div class="stat"><b>163</b><span>design tokens recovered</span></div>
+    <div class="stat"><b>8</b><span>bugs found by testing</span></div>
+    <div class="stat"><b>3</b><span>verify gates</span></div>
+  </div>
+</header>
+
+<div class="toc">
+  <ol>
+    <li><a href="#sec-1">What Demo Forge is, and what it refuses to do</a></li>
+    <li><a href="#sec-2">The pipeline, end to end</a></li>
+    <li><a href="#sec-3">What gets built on disk</a></li>
+    <li><a href="#sec-4">Stage 1 - Intake: five questions before anything runs</a></li>
+    <li><a href="#sec-5">Stage 2 - Capture: finding the app inside the page</a></li>
+    <li><a href="#sec-6">Stage 3 - Design extraction: measured, not guessed</a></li>
+    <li><a href="#sec-7">Stage 4 - Reconstruction: outline to React</a></li>
+    <li><a href="#sec-8">Stage 5 - Storyline: the guided-step contract</a></li>
+    <li><a href="#sec-9">Stage 6 - Verify: three gates that must go green</a></li>
+    <li><a href="#sec-10">Stage 7 - Deploy: Azure Static Web Apps</a></li>
+    <li><a href="#sec-11">Design decisions and the reasoning behind them</a></li>
+    <li><a href="#sec-12">The eight bugs the live test exposed</a></li>
+    <li><a href="#sec-13">Command reference</a></li>
+    <li><a href="#sec-14">Verification evidence</a></li>
+    <li><a href="#sec-15">Limits, gaps and known risks</a></li>
+    <li><a href="#sec-16">Runbook: your next demo, start to finish</a></li>
+  </ol>
+</div>
+
+<section id="sec-1">
+  <h2><span class="n">01</span>Orientation</h2>
+  <h3>What Demo Forge is, and what it refuses to do</h3>
+
+  <blockquote class="shape">
+    <b>Capture measures. Design decides provenance. Scaffold generates. The gate proves.</b>
+    Every stage writes a file the next stage reads, so any stage can be re-run alone, and every claim the demo makes about the source app traces back to something a browser actually observed.
+  </blockquote>
+
+  <p class="lede">Project Mia was rebuilt by hand: a Power App at <code>apps.powerapps.com</code> became a static React click-through at <code>mango-desert-0f88f590f.7.azurestaticapps.net</code>. That took weeks of reading the app, copying its colours, rebuilding its screens and wiring a narration. Demo Forge is that process turned into tooling, so the second application costs hours instead of weeks.</p>
+
+  <p>You give it a URL and answer five questions. It gives you back a Vite + React application that looks like the source app, runs with no backend, carries a guided storyline, passes a headless render gate, and deploys to its own Azure Static Web App.</p>
+
+  <h4>What it deliberately will not do</h4>
+  <div class="cards">
+    <div class="card"><span class="k">No backend</span><h4>Seeded data only</h4><p>Every value on screen comes from <code>src/data/seed.js</code>. There is no API, no database and no network call at runtime. The demo works on a plane.</p></div>
+    <div class="card"><span class="k">No auth</span><h4>Nobody signs in</h4><p>The output has no login screen and no token handling. If the source app needs a session to capture, that session is used once, at capture time, and never ships.</p></div>
+    <div class="card"><span class="k">No integrations</span><h4>Nothing is live</h4><p>Connectors, Dataverse, Graph and third-party services are represented visually and do nothing. A click that would write data in the real app shows the result instead.</p></div>
+    <div class="card"><span class="k">No authorship</span><h4>It will not decide what to say</h4><p>Demo Forge reconstructs what the app looks like and how it moves. The argument the demo is making is yours. It asks for the storyline; it does not invent one.</p></div>
+  </div>
+
+  <div class="note info"><b>The boundary that matters</b>Demo Forge is a <em>faithfulness</em> tool, not a cloning tool. It reproduces layout, design language, navigation and flow. It does not reproduce business logic, and it never claims to. A demo that quietly pretends to compute something is worse than one that visibly cannot.</div>
+</section>
+
+<section id="sec-2">
+  <h2><span class="n">02</span>Orientation</h2>
+  <h3>The pipeline, end to end</h3>
+
+  <p>Seven stages. Each one consumes a named artifact and produces a named artifact, which is what makes the pipeline restartable. If the design comes out wrong you re-run <code>design</code>; you do not re-crawl the site.</p>
+
+  <figure>
+    <svg viewBox="0 0 980 260" role="img" aria-labelledby="pipe-t pipe-d">
+      <title id="pipe-t">Demo Forge seven-stage pipeline</title>
+      <desc id="pipe-d">Intake produces a brief. Capture produces a manifest and screenshots. Design produces tokens. Scaffold produces a React app. Storyline produces guided scripts. Verify produces a gate report. Deploy produces a live URL.</desc>
+      <defs>
+        <marker id="ar" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#c8c6c4"/></marker>
+      </defs>
+      <g font-family="Segoe UI, system-ui, sans-serif">
+        <g>
+          <rect x="4" y="60" width="126" height="64" rx="6" fill="#eff6fc" stroke="#cfe4f7"/>
+          <text x="67" y="83" text-anchor="middle" font-size="13" font-weight="650" fill="#0b4577">1 Intake</text>
+          <text x="67" y="101" text-anchor="middle" font-size="10.5" fill="#484644">five questions</text>
+          <text x="67" y="115" text-anchor="middle" font-size="10.5" fill="#484644">no tools run</text>
+        </g>
+        <line x1="134" y1="92" x2="152" y2="92" stroke="#c8c6c4" stroke-width="1.5" marker-end="url(#ar)"/>
+        <g>
+          <rect x="156" y="60" width="126" height="64" rx="6" fill="#ffffff" stroke="#e1dfdd"/>
+          <text x="219" y="83" text-anchor="middle" font-size="13" font-weight="650" fill="#201f1e">2 Capture</text>
+          <text x="219" y="101" text-anchor="middle" font-size="10.5" fill="#484644">Playwright crawl</text>
+          <text x="219" y="115" text-anchor="middle" font-size="10.5" fill="#484644">DOM + pixels</text>
+        </g>
+        <line x1="286" y1="92" x2="304" y2="92" stroke="#c8c6c4" stroke-width="1.5" marker-end="url(#ar)"/>
+        <g>
+          <rect x="308" y="60" width="126" height="64" rx="6" fill="#ffffff" stroke="#e1dfdd"/>
+          <text x="371" y="83" text-anchor="middle" font-size="13" font-weight="650" fill="#201f1e">3 Design</text>
+          <text x="371" y="101" text-anchor="middle" font-size="10.5" fill="#484644">tokens + roles</text>
+          <text x="371" y="115" text-anchor="middle" font-size="10.5" fill="#484644">contrast check</text>
+        </g>
+        <line x1="438" y1="92" x2="456" y2="92" stroke="#c8c6c4" stroke-width="1.5" marker-end="url(#ar)"/>
+        <g>
+          <rect x="460" y="60" width="126" height="64" rx="6" fill="#ffffff" stroke="#e1dfdd"/>
+          <text x="523" y="83" text-anchor="middle" font-size="13" font-weight="650" fill="#201f1e">4 Scaffold</text>
+          <text x="523" y="101" text-anchor="middle" font-size="10.5" fill="#484644">outline to JSX</text>
+          <text x="523" y="115" text-anchor="middle" font-size="10.5" fill="#484644">routes + seed</text>
+        </g>
+        <line x1="590" y1="92" x2="608" y2="92" stroke="#c8c6c4" stroke-width="1.5" marker-end="url(#ar)"/>
+        <g>
+          <rect x="612" y="60" width="126" height="64" rx="6" fill="#eff6fc" stroke="#cfe4f7"/>
+          <text x="675" y="83" text-anchor="middle" font-size="13" font-weight="650" fill="#0b4577">5 Storyline</text>
+          <text x="675" y="101" text-anchor="middle" font-size="10.5" fill="#484644">guided steps</text>
+          <text x="675" y="115" text-anchor="middle" font-size="10.5" fill="#484644">you write this</text>
+        </g>
+        <line x1="742" y1="92" x2="760" y2="92" stroke="#c8c6c4" stroke-width="1.5" marker-end="url(#ar)"/>
+        <g>
+          <rect x="764" y="60" width="98" height="64" rx="6" fill="#dff6dd" stroke="#b7e3b7"/>
+          <text x="813" y="83" text-anchor="middle" font-size="13" font-weight="650" fill="#0b4f0b">6 Verify</text>
+          <text x="813" y="101" text-anchor="middle" font-size="10.5" fill="#484644">3 gates</text>
+          <text x="813" y="115" text-anchor="middle" font-size="10.5" fill="#484644">headless</text>
+        </g>
+        <line x1="866" y1="92" x2="884" y2="92" stroke="#c8c6c4" stroke-width="1.5" marker-end="url(#ar)"/>
+        <g>
+          <rect x="888" y="60" width="88" height="64" rx="6" fill="#ffffff" stroke="#e1dfdd"/>
+          <text x="932" y="83" text-anchor="middle" font-size="13" font-weight="650" fill="#201f1e">7 Deploy</text>
+          <text x="932" y="101" text-anchor="middle" font-size="10.5" fill="#484644">Azure SWA</text>
+          <text x="932" y="115" text-anchor="middle" font-size="10.5" fill="#484644">live URL</text>
+        </g>
+
+        <g font-size="10" fill="#797775" font-family="ui-monospace, Menlo, monospace">
+          <text x="67" y="148" text-anchor="middle">brief</text>
+          <text x="219" y="148" text-anchor="middle">manifest.json</text>
+          <text x="371" y="148" text-anchor="middle">tokens.css</text>
+          <text x="523" y="148" text-anchor="middle">src/routes</text>
+          <text x="675" y="148" text-anchor="middle">demo/scripts</text>
+          <text x="813" y="148" text-anchor="middle">gate report</text>
+          <text x="932" y="148" text-anchor="middle">https://...</text>
+        </g>
+
+        <g>
+          <rect x="4" y="184" width="972" height="52" rx="6" fill="#faf9f8" stroke="#e1dfdd" stroke-dasharray="3 3"/>
+          <text x="20" y="205" font-size="11" font-weight="700" fill="#797775" letter-spacing="0.06em">ONE COMMAND</text>
+          <text x="20" y="223" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#201f1e">demo-forge build &lt;url&gt; --out ./my-demo    runs capture, design, scaffold and verify in order; intake, storyline and deploy stay human-gated</text>
+        </g>
+      </g>
+    </svg>
+    <figcaption>Stages 1, 5 and 7 are deliberately human-gated. Intake needs an answer, storyline needs an argument, deploy needs an approval.</figcaption>
+  </figure>
+
+  <table>
+    <thead><tr><th>Stage</th><th>Command</th><th>Reads</th><th>Writes</th><th>Human?</th></tr></thead>
+    <tbody>
+      <tr><td><b>1 Intake</b></td><td><code>-</code></td><td>the conversation</td><td>a brief you confirm</td><td><span class="tag w">required</span></td></tr>
+      <tr><td><b>2 Capture</b></td><td><code>capture</code></td><td>the live URL</td><td><code>capture/manifest.json</code>, <code>capture/shots/*.png</code></td><td><span class="tag n">auto</span></td></tr>
+      <tr><td><b>3 Design</b></td><td><code>design</code></td><td><code>manifest.json</code></td><td><code>src/theme/tokens.css</code>, design report</td><td><span class="tag n">auto</span></td></tr>
+      <tr><td><b>4 Scaffold</b></td><td><code>scaffold</code></td><td><code>manifest.json</code> + tokens</td><td>the whole React app</td><td><span class="tag n">auto</span></td></tr>
+      <tr><td><b>5 Storyline</b></td><td><code>audience</code></td><td>your narrative</td><td><code>src/demo/scripts/*.js</code>, registry entry</td><td><span class="tag w">required</span></td></tr>
+      <tr><td><b>6 Verify</b></td><td><code>verify</code></td><td>the built app</td><td>pass/fail per screen</td><td><span class="tag n">auto</span></td></tr>
+      <tr><td><b>7 Deploy</b></td><td><code>deploy</code></td><td>the built app</td><td>a live Azure URL</td><td><span class="tag w">approval</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="sec-3">
+  <h2><span class="n">03</span>Orientation</h2>
+  <h3>What gets built on disk</h3>
+
+  <p>Two trees matter: the skill you install once, and the demo it generates each time.</p>
+
+  <h4>The skill, installed once</h4>
+  <div class="tree"><b>~/.copilot/skills/demo-forge/</b>
+├── <b>SKILL.md</b>                     <i>246 lines - the contract the agent follows</i>
+├── <b>references/</b>
+│   ├── intake.md                <i>100 - the five questions, the four demo kinds</i>
+│   ├── capture-protocol.md      <i>115 - frame scoring, route vs control</i>
+│   ├── design-extraction.md     <i>91  - source wins over inference</i>
+│   ├── reconstruction.md        <i>114 - outline to JSX, block kinds</i>
+│   ├── guided-demo-contract.md  <i>104 - the step shape, park do not skip</i>
+│   └── azure-swa.md             <i>120 - the non-negotiable Azure limits</i>
+├── <b>tools/</b>
+│   ├── demo-forge.mjs           <i>363 - CLI, 8 commands, flag allowlist</i>
+│   └── lib/
+│       ├── capture.mjs          <i>679 - Playwright, PROBE, crawler</i>
+│       ├── scaffold.mjs         <i>533 - capture to React</i>
+│       ├── design.mjs           <i>526 - tokens, roles, contrast</i>
+│       └── deploy.mjs           <i>164 - az CLI wrapper</i>
+└── <b>assets/template/</b>            <i>copied into every generated demo</i>
+    ├── src/demo/guide.js        <i>357 - the guided-tour engine</i>
+    ├── src/shell/primitives.jsx    <i>236 - 9 components the scaffold emits</i>
+    ├── src/shell/AppShell.jsx     <i>158 - rail, topbar, outlet</i>
+    ├── src/demo/scope.js        <i>72  - sub-site containment</i>
+    └── scripts/verify-*.mjs     <i>3 gates + a runner</i>
+</div>
+
+  <h4>A generated demo</h4>
+  <div class="tree"><b>my-demo/</b>
+├── capture/
+│   ├── manifest.json            <i>every measurement, the audit trail</i>
+│   └── shots/*.png              <i>one screenshot per discovered route</i>
+├── src/
+│   ├── theme/tokens.css         <i>generated - every token carries provenance</i>
+│   ├── routes/index.jsx         <i>generated - one component per route</i>
+│   ├── data/seed.js             <i>generated - all on-screen values</i>
+│   ├── demo/
+│   │   ├── registry.js          <i>generated - the audience registry</i>
+│   │   ├── scripts/index.js     <i>generated - script lookup</i>
+│   │   └── scripts/default.js   <i>generated - the starter storyline</i>
+│   ├── shell/primitives.jsx     <i>from template</i>
+│   └── shell/AppShell.jsx       <i>from template</i>
+├── scripts/verify-all.mjs       <i>from template - the gate</i>
+├── staticwebapp.config.json     <i>from template - SPA fallback</i>
+└── .github/workflows/           <i>from template - deploy on push</i>
+</div>
+
+  <div class="note info"><b>The audit trail is the point</b><code>capture/manifest.json</code> is kept, not discarded. When someone asks "is that really the colour their app uses", the answer is a grep, not a memory. Every token in <code>tokens.css</code> carries a comment saying where it came from: <code>/* source --color-bg */</code> if the app named it, <code>/* 40 elements */</code> if Demo Forge inferred it.</div>
+</section>
+
+<section id="sec-4">
+  <h2><span class="n">04</span>Stage 1</h2>
+  <h3>Intake: five questions before anything runs</h3>
+
+  <p>No tool runs until these are answered. A capture aimed at the wrong audience produces a technically correct demo that nobody wants to show.</p>
+
+  <table>
+    <thead><tr><th style="width:26%">Question</th><th>Why it changes the output</th></tr></thead>
+    <tbody>
+      <tr><td><b>1. What is the URL?</b></td><td>Decides whether capture needs a session. A public marketing site captures cold; a Power App, a Dynamics form or an internal portal needs <code>--login</code> or a saved <code>--profile</code>.</td></tr>
+      <tr><td><b>2. Who is watching?</b></td><td>An executive audience gets fewer screens and bigger claims. A practitioner audience gets the field-level detail. This sets how many routes are worth rebuilding at all.</td></tr>
+      <tr><td><b>3. What kind of demo?</b></td><td>Four kinds, below. This is the single biggest branch in the whole pipeline.</td></tr>
+      <tr><td><b>4. What is the one thing they must remember?</b></td><td>Becomes the spine of the storyline. If you cannot answer this, the demo has no argument and should not be built yet.</td></tr>
+      <tr><td><b>5. Where does it get shared?</b></td><td>A link sent to a customer needs its own sub-site and containment. A link for an internal review can live on the front door.</td></tr>
+    </tbody>
+  </table>
+
+  <h4>The four demo kinds</h4>
+  <div class="cards">
+    <div class="card"><span class="k">Kind 1</span><h4>Faithful replica</h4><p>Rebuild the app as it is. Used to show a system to people who cannot be given access to it. Highest route count, no invented screens.</p></div>
+    <div class="card"><span class="k">Kind 2</span><h4>Guided walkthrough</h4><p>The replica plus a narration that drives the viewer through one path. Steps advance on the viewer's own click. This is what Project Mia is.</p></div>
+    <div class="card"><span class="k">Kind 3</span><h4>Before and after</h4><p>Two routes of the same screen: the system as it is, and the system as proposed. The argument lives in the difference, so both must be visually credible.</p></div>
+    <div class="card"><span class="k">Kind 4</span><h4>Vision cut</h4><p>The captured design language applied to screens that do not exist yet. Honest only when it is labelled as such - the shell is real, the content is a proposal.</p></div>
+  </div>
+
+  <div class="note warn"><b>Say which kind it is, on the screen</b>Kinds 3 and 4 show things the source system does not do. The generated shell carries a banner slot for exactly this reason. A vision cut that is not labelled a vision cut is a credibility problem waiting for a follow-up meeting.</div>
+</section>
+
+<section id="sec-5">
+  <h2><span class="n">05</span>Stage 2</h2>
+  <h3>Capture: finding the app inside the page</h3>
+
+  <p><code>capture.mjs</code> is 679 lines and the hardest part of the system. Loading a URL in Playwright is easy. Working out <em>which part of what loaded is the application</em> is not.</p>
+
+  <h4>The iframe trap</h4>
+  <p>A Power App URL does not serve the app. It serves a player - a thin host page whose job is to load the real application into a nested, sometimes cross-origin iframe. Screenshot the top frame and you get a loading chrome. Read the top frame's CSS and you get the player's tokens, not the app's.</p>
+
+  <p>So capture scores every frame in the page and picks the winner:</p>
+
+  <pre><code>score = elements * 1
+      + interactive * 40
+      + customProps * 25
+      + (themed     ? 3000 : 0)
+      + (reactRoot  ? 1500 : 0)
+      + min(text, 5000)</code></pre>
+
+  <p>The two large constants do the real work. A player chrome has neither a theme block of CSS custom properties nor a React root; an application almost always has at least one. They are close to decisive on purpose - a frame that is themed beats a frame that merely has more DOM in it. Cross-origin frames throw on <code>evaluate</code> and are skipped rather than crashing the run.</p>
+
+  <div class="note good"><b>Observed on the Mia source app</b><code>weight=10011 els=183 props=163 themed=true</code> - the app frame won by a margin no amount of player chrome could close.</div>
+
+  <h4>Telling a route from a control</h4>
+  <p>The crawler clicks things and watches what happens. The naive version treats every click that changes the view as a new route, which is how a sidebar collapse button became a page called <code>/collapse-navigation-menu</code>. Two defences now sit either side of the click.</p>
+
+  <figure>
+    <svg viewBox="0 0 900 250" role="img" aria-labelledby="rc-t rc-d">
+      <title id="rc-t">Route versus control decision</title>
+      <desc id="rc-d">A candidate element is first filtered on ARIA attributes. If it survives, it is clicked, and the resulting content signature is compared against signatures already seen. A repeat signature means it was a control, not a route.</desc>
+      <g font-family="Segoe UI, system-ui, sans-serif">
+        <rect x="8" y="98" width="128" height="52" rx="6" fill="#ffffff" stroke="#e1dfdd"/>
+        <text x="72" y="120" text-anchor="middle" font-size="12.5" font-weight="650">clickable</text>
+        <text x="72" y="137" text-anchor="middle" font-size="11" fill="#484644">candidate</text>
+        <line x1="140" y1="124" x2="164" y2="124" stroke="#c8c6c4" stroke-width="1.5"/>
+
+        <rect x="168" y="88" width="172" height="72" rx="6" fill="#fff4ce" stroke="#e8d48a"/>
+        <text x="254" y="110" text-anchor="middle" font-size="12" font-weight="650" fill="#5c4a00">pre-filter: ARIA</text>
+        <text x="254" y="128" text-anchor="middle" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#5c4a00">aria-expanded</text>
+        <text x="254" y="143" text-anchor="middle" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#5c4a00">aria-controls / haspopup</text>
+
+        <line x1="254" y1="88" x2="254" y2="52" stroke="#c8c6c4" stroke-width="1.5"/>
+        <rect x="186" y="18" width="136" height="34" rx="5" fill="#fde7e9" stroke="#f3c3c6"/>
+        <text x="254" y="39" text-anchor="middle" font-size="11.5" font-weight="650" fill="#75161b">control - never clicked</text>
+
+        <line x1="344" y1="124" x2="368" y2="124" stroke="#c8c6c4" stroke-width="1.5"/>
+        <rect x="372" y="98" width="112" height="52" rx="6" fill="#eff6fc" stroke="#cfe4f7"/>
+        <text x="428" y="120" text-anchor="middle" font-size="12.5" font-weight="650" fill="#0b4577">click it</text>
+        <text x="428" y="137" text-anchor="middle" font-size="11" fill="#484644">settle, then read</text>
+
+        <line x1="488" y1="124" x2="512" y2="124" stroke="#c8c6c4" stroke-width="1.5"/>
+        <rect x="516" y="82" width="196" height="84" rx="6" fill="#ffffff" stroke="#e1dfdd"/>
+        <text x="614" y="104" text-anchor="middle" font-size="12" font-weight="650">content signature</text>
+        <text x="614" y="122" text-anchor="middle" font-size="10.5" fill="#484644">headings + th + labels</text>
+        <text x="614" y="137" text-anchor="middle" font-size="10.5" fill="#484644">chrome excluded</text>
+        <text x="614" y="154" text-anchor="middle" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#797775">djb2 -&gt; count:hash36</text>
+
+        <line x1="716" y1="104" x2="744" y2="70" stroke="#c8c6c4" stroke-width="1.5"/>
+        <rect x="748" y="44" width="144" height="46" rx="6" fill="#dff6dd" stroke="#b7e3b7"/>
+        <text x="820" y="63" text-anchor="middle" font-size="11.5" font-weight="650" fill="#0b4f0b">new signature</text>
+        <text x="820" y="79" text-anchor="middle" font-size="10.5" fill="#0b4f0b">= genuine route</text>
+
+        <line x1="716" y1="144" x2="744" y2="178" stroke="#c8c6c4" stroke-width="1.5"/>
+        <rect x="748" y="156" width="144" height="46" rx="6" fill="#fde7e9" stroke="#f3c3c6"/>
+        <text x="820" y="175" text-anchor="middle" font-size="11.5" font-weight="650" fill="#75161b">seen before</text>
+        <text x="820" y="191" text-anchor="middle" font-size="10.5" fill="#75161b">= control, slot freed</text>
+      </g>
+    </svg>
+    <figcaption>The signature deliberately excludes <code>nav</code>, <code>[role=navigation]</code>, sidebars, rails, headers and topbars - otherwise a collapsing sidebar changes the digest and looks like a new page.</figcaption>
+  </figure>
+
+  <p>A click that produces an already-seen signature is recorded under <code>manifest.controls</code> and its route slot is handed back to the crawler. On the Mia app that freed two slots, which then found two genuine routes - Configuration and WatchDog - that the earlier run had never reached.</p>
+
+  <h4>The outline is node-budgeted, not depth-capped</h4>
+  <p>Capture serialises the DOM into an outline the scaffold can read. The first version capped recursion at depth 7, which seemed generous. It was not: the navigation rail is deep, it comes first in document order, and it consumed the entire allowance before the traversal reached <code>&lt;main&gt;</code>. Every page came back with a nav and no content.</p>
+  <p>It now runs to depth 16 with a 1,200-node budget, and marks nav-like nodes with a <code>chrome</code> flag so the scaffold can skip them without losing them. On Mia the outline went from 39 nodes to 103.</p>
+
+  <details class="raw-data">
+    <summary>What the PROBE measures on every page</summary>
+    <div class="in">
+      <table>
+        <thead><tr><th style="width:30%">Measurement</th><th>Used for</th></tr></thead>
+        <tbody>
+          <tr><td><code>customProps</code></td><td>Every CSS custom property resolved on <code>:root</code>. The primary token source.</td></tr>
+          <tr><td><code>backgroundArea</code></td><td>Painted area per background colour, not element count. Decides canvas vs surface.</td></tr>
+          <tr><td><code>interactiveColors</code></td><td>Colours used on buttons, links and inputs, weighted 2x foreground / 3x background. Decides the accent.</td></tr>
+          <tr><td><code>renderScale</code></td><td>Device pixel ratio and zoom, so font sizes normalise back to CSS pixels.</td></tr>
+          <tr><td><code>outline</code></td><td>Structural tree with role, tag, text, box and the <code>chrome</code> flag.</td></tr>
+          <tr><td><code>text</code>, <code>elements</code>, <code>interactive</code></td><td>Frame scoring inputs and the render gate's floor.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+</section>
+
+<section id="sec-6">
+  <h2><span class="n">06</span>Stage 3</h2>
+  <h3>Design extraction: measured, not guessed</h3>
+
+  <blockquote class="shape"><b>A named custom property beats an inferred role. Always.</b> Inference is the fallback for apps that do not name their tokens, not the primary path.</blockquote>
+
+  <p>This rule exists because the first version got it wrong four times out of four on a single app, and every one of those failures was confidently plausible.</p>
+
+  <table>
+    <thead><tr><th>Role</th><th>The app's own <code>:root</code> said</th><th>Inference said</th><th>Why inference was wrong</th></tr></thead>
+    <tbody>
+      <tr><td><b>canvas</b></td><td><code>#f9fafb</code></td><td><code>#ffffff</code> <span class="tag b">wrong</span></td><td>Ranked backgrounds by element <em>count</em>. There are many cards and one canvas, so the cards won.</td></tr>
+      <tr><td><b>surface</b></td><td><code>#ffffff</code></td><td><code>#f9fafb</code> <span class="tag b">wrong</span></td><td>The same error, inverted. Canvas and surface swapped places.</td></tr>
+      <tr><td><b>accent</b></td><td><code>#4f46e5</code></td><td><code>#22c55e</code> <span class="tag b">wrong</span></td><td>Ranked by <em>saturation</em>. A success green is more saturated than an indigo, so a status colour became the brand.</td></tr>
+      <tr><td><b>text base</b></td><td><code>13px</code></td><td><code>10px</code> <span class="tag b">wrong</span></td><td>10px mono section labels out-counted 13px body copy. The most common size is not the base size.</td></tr>
+    </tbody>
+  </table>
+
+  <p>All four fixes are in section 12 as before/after code. The shape of the fix in each case was the same: stop counting things, start measuring the thing that actually matters. Area instead of count. Where a colour is painted instead of how saturated it is.</p>
+
+  <h4>Alias matching</h4>
+  <p><code>ROLE_ALIASES</code> maps 12 semantic roles to roughly six name patterns each, so <code>--color-bg</code>, <code>--background</code>, <code>--surface-canvas</code> and <code>--app-bg</code> all resolve to <code>canvas</code>. <code>adoptSourceTokens()</code> runs first and claims everything it can match; <code>inferRoles()</code> only fills what is left.</p>
+
+  <h4>Provenance, in the file</h4>
+  <pre><code>:root {
+  --canvas:  #f9fafb;  /* source --color-bg */
+  --surface: #ffffff;  /* source --color-surface */
+  --accent:  #4f46e5;  /* source --color-primary */
+  --hairline:#e5e7eb;  /* 40 elements */
+}</code></pre>
+  <p>Anything with an <code>/* N elements */</code> comment is inference and is the first place to look when a demo feels subtly off. Anything with <code>/* source ... */</code> is a fact the app stated about itself.</p>
+
+  <h4>Contrast is checked, not assumed</h4>
+  <p>The design report includes a contrast table for every text-on-background pair the tokens imply. Adopting a source token verbatim can still produce an unreadable pair if the source app relied on a nuance the reconstruction drops, so the check runs regardless of provenance.</p>
+</section>
+
+<section id="sec-7">
+  <h2><span class="n">07</span>Stage 4</h2>
+  <h3>Reconstruction: outline to React</h3>
+
+  <p><code>scaffold.mjs</code> reads the outline and classifies each region into one of three block kinds, then renders each kind with a primitive from the template.</p>
+
+  <table>
+    <thead><tr><th style="width:14%">Block</th><th style="width:34%">Detected when</th><th>Rendered as</th></tr></thead>
+    <tbody>
+      <tr><td><b>stats</b></td><td>Short numeric-leading siblings in a row - a KPI strip.</td><td><code>&lt;Grid&gt;</code> of <code>&lt;StatTile&gt;</code>, values into <code>seed.js</code></td></tr>
+      <tr><td><b>cards</b></td><td>Siblings that <em>resemble each other</em>: max/min width AND height ratio both &le; 1.6.</td><td><code>&lt;Grid&gt;</code> of <code>&lt;Card&gt;</code></td></tr>
+      <tr><td><b>panel</b></td><td>Everything else with content - the fallback that stops siblings from vanishing.</td><td><code>&lt;Card&gt;</code> with a <code>&lt;SectionLabel&gt;</code>, tables become <code>&lt;DataTable&gt;</code></td></tr>
+    </tbody>
+  </table>
+
+  <div class="note info"><b>The similarity test is the whole trick</b>Cards look like each other. A stack of sections does not - a header, a chart and a footnote have wildly different heights. Before the ratio test existed, that heterogeneous stack was classified as a card grid and the KPI strip came out mangled. Ratio &le; 1.6 on both axes separates them cleanly.</div>
+
+  <h4>The nine primitives</h4>
+  <p>Everything the scaffold emits is built from <code>src/shell/primitives.jsx</code>: <code>PageHeader</code>, <code>SectionLabel</code>, <code>Card</code>, <code>Grid</code>, <code>StatTile</code>, <code>DataTable</code>, <code>Button</code>, <code>Pill</code>, <code>Empty</code>. Every one reads from <code>tokens.css</code> and hard-codes no colour. Re-running <code>design</code> against a different app restyles the entire demo without touching a component.</p>
+
+  <h4>Depth has to match</h4>
+  <div class="note warn"><b>A coupling worth knowing about</b><code>collectBlocks()</code> in <code>scaffold.mjs</code> must traverse to the same depth as the capture outline. The stat strip on the Mia home page sits at depth 9. A cap of 6 rendered that page as visibly "not reconstructed" while every gate still passed, because the gate checks that a page has content, not that it has the <em>right</em> content.</div>
+</section>
+
+<section id="sec-8">
+  <h2><span class="n">08</span>Stage 5</h2>
+  <h3>Storyline: the guided-step contract</h3>
+
+  <p><code>src/demo/guide.js</code> is 357 lines and implements one idea: a guided demo advances when the viewer does something, never when a clock says so.</p>
+
+  <pre><code>{
+  target:     () =&gt; document.querySelector('[data-testid="kpi-waves"]'),
+  event:      'click',
+  placement:  'bottom',
+  gap:        12,
+  isComplete: () =&gt; location.hash.endsWith('/waves'),
+  kicker:     'Where the work lives',
+  script:     'Eight tasks across three waves. Nothing is assigned yet.',
+  onEnter:    () =&gt; highlightWave(2)
+}</code></pre>
+
+  <table>
+    <thead><tr><th style="width:20%">Field</th><th>Behaviour</th></tr></thead>
+    <tbody>
+      <tr><td><code>target</code></td><td>A <em>function</em>, not an element. Resolved at step time, so it works on content that has not rendered yet.</td></tr>
+      <tr><td><code>event</code></td><td>What the viewer must do. The step will not advance on anything else.</td></tr>
+      <tr><td><code>isComplete</code></td><td>The truth test. The step is done when the app is actually in the expected state, not when the click fired.</td></tr>
+      <tr><td><code>script</code> / <code>kicker</code></td><td>What the presenter says. This is the part you write; Demo Forge generates a placeholder and nothing more.</td></tr>
+      <tr><td><code>onEnter</code></td><td>Optional side effect - open a panel, seed a filter, scroll something into view.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="decisions">
+    <div class="dec">
+      <h4>Advance on action, never on a timer</h4>
+      <p>There is no <code>setTimeout</code> in the advance path at all.</p>
+      <p class="why"><b>Why:</b> a timed tour races the person watching it. They ask a question, the tour moves on without them, and the presenter spends the rest of the demo apologising to the UI.</p>
+    </div>
+    <div class="dec">
+      <h4>A missing target parks. It does not skip.</h4>
+      <p>If <code>target()</code> returns nothing, the tour holds position and keeps re-resolving.</p>
+      <p class="why"><b>Why:</b> silently skipping means the demo quietly drops the step that carried the argument, and nobody notices until the meeting. Parking is visible, and visible is fixable.</p>
+    </div>
+  </div>
+
+  <h4>Audiences and containment</h4>
+  <p><code>demo-forge audience /Exec-brief --guided</code> adds a registry entry and a script file. Every audience gets its own route prefix, and <code>scope.js</code> mirrors the whole route table beneath that prefix.</p>
+
+  <figure>
+    <svg viewBox="0 0 880 170" role="img" aria-labelledby="sc-t sc-d">
+      <title id="sc-t">Sub-site containment</title>
+      <desc id="sc-d">Inside an audience sub-site, pressing Home resolves to that sub-site's own home route rather than the shared front door.</desc>
+      <g font-family="Segoe UI, system-ui, sans-serif">
+        <rect x="8" y="16" width="410" height="138" rx="8" fill="#fde7e9" stroke="#f3c3c6"/>
+        <text x="26" y="40" font-size="11" font-weight="700" fill="#75161b" letter-spacing="0.06em">WITHOUT SCOPE</text>
+        <rect x="26" y="54" width="170" height="40" rx="5" fill="#fff" stroke="#e1dfdd"/>
+        <text x="111" y="79" text-anchor="middle" font-size="11.5" font-family="ui-monospace, Menlo, monospace">/#/Exec-brief</text>
+        <path d="M204,74 L246,74" stroke="#a4262c" stroke-width="1.5"/>
+        <text x="225" y="66" text-anchor="middle" font-size="10" fill="#75161b">Home</text>
+        <rect x="250" y="54" width="150" height="40" rx="5" fill="#fff" stroke="#f3c3c6"/>
+        <text x="325" y="79" text-anchor="middle" font-size="11.5" font-family="ui-monospace, Menlo, monospace" fill="#75161b">/#/home</text>
+        <text x="26" y="124" font-size="11.5" fill="#75161b">The customer lands on the shared front door,</text>
+        <text x="26" y="140" font-size="11.5" fill="#75161b">or worse, on another customer's story.</text>
+
+        <rect x="446" y="16" width="426" height="138" rx="8" fill="#dff6dd" stroke="#b7e3b7"/>
+        <text x="464" y="40" font-size="11" font-weight="700" fill="#0b4f0b" letter-spacing="0.06em">WITH scope.js</text>
+        <rect x="464" y="54" width="170" height="40" rx="5" fill="#fff" stroke="#e1dfdd"/>
+        <text x="549" y="79" text-anchor="middle" font-size="11.5" font-family="ui-monospace, Menlo, monospace">/#/Exec-brief</text>
+        <path d="M642,74 L684,74" stroke="#0e700e" stroke-width="1.5"/>
+        <text x="663" y="66" text-anchor="middle" font-size="10" fill="#0b4f0b">Home</text>
+        <rect x="688" y="54" width="170" height="40" rx="5" fill="#fff" stroke="#b7e3b7"/>
+        <text x="773" y="79" text-anchor="middle" font-size="11.5" font-family="ui-monospace, Menlo, monospace" fill="#0b4f0b">/#/Exec-brief/home</text>
+        <text x="464" y="124" font-size="11.5" fill="#0b4f0b">They stay inside the story they were sent.</text>
+        <text x="464" y="140" font-size="11.5" fill="#0b4f0b">Their original casing is preserved, so the link they were given keeps working.</text>
+      </g>
+    </svg>
+    <figcaption>Proven by <code>verify-render.mjs</code>, which clicks the shell's Home control and asserts the resulting hash still carries the audience prefix.</figcaption>
+  </figure>
+</section>
+
+<section id="sec-9">
+  <h2><span class="n">09</span>Stage 6</h2>
+  <h3>Verify: three gates that must go green</h3>
+
+  <p>A generated demo is not finished when it builds. It is finished when a headless browser has opened every screen and found real content on each one.</p>
+
+  <table>
+    <thead><tr><th style="width:24%">Gate</th><th style="width:10%">Lines</th><th>What it proves</th></tr></thead>
+    <tbody>
+      <tr><td><code>verify-render.mjs</code></td><td class="num">158</td><td>Every route renders content, throws no console error, and every audience stays inside itself.</td></tr>
+      <tr><td><code>verify-routes.mjs</code></td><td class="num">48</td><td>No duplicate route paths, and every nav item resolves to a route that exists.</td></tr>
+      <tr><td><code>verify-audiences.mjs</code></td><td class="num">51</td><td>Every registry entry has a script, and every script is reachable from a registry entry.</td></tr>
+    </tbody>
+  </table>
+
+  <h4>The render gate's assertion</h4>
+  <pre><code>elements &gt;= 12
+  &amp;&amp; text &gt; 0
+  &amp;&amp; errors.length === 0
+  &amp;&amp; (!expectContained || containment.stayed)</code></pre>
+
+  <p>The floor of 12 elements is low on purpose. Its job is to catch a screen that rendered a shell and nothing else - the single most common way a generated demo fails, and the one that is hardest to spot by eye because the page still looks like an application.</p>
+
+  <div class="note warn"><b>A gate that counted wrong is worse than no gate</b>The first version reported <code>routes: 14</code> for an app with 7, because its regex matched both the <code>routes</code> array and the <code>navItems</code> array. Every route was tested twice and the pass looked twice as thorough as it was. The same bug in <code>verify-routes.mjs</code> made its duplicate check useless: every path legitimately appeared twice, so the check could never fire. Both are fixed in section 12.</div>
+</section>
+
+<section id="sec-10">
+  <h2><span class="n">10</span>Stage 7</h2>
+  <h3>Deploy: Azure Static Web Apps</h3>
+
+  <p><code>deploy.mjs</code> is a thin wrapper over the <code>az</code> CLI - <code>preflight</code>, <code>createSwa</code>, <code>deployStatus</code>, <code>envName</code>. It is thin because the value is in the constraints it enforces, not the commands it runs.</p>
+
+  <table>
+    <thead><tr><th style="width:30%">Constraint</th><th>What it means in practice</th></tr></thead>
+    <tbody>
+      <tr><td><b>Environment name is a suffix</b></td><td>Azure owns the hostname and only appends: <code>&lt;app&gt;-&lt;env&gt;.azurestaticapps.net</code>. A prefix host cannot be created. Asking for one wastes an afternoon.</td></tr>
+      <tr><td><b>Alphanumeric, 16 characters max</b></td><td>No hyphens inside the environment name. <code>sapsfdc</code>, never <code>sap-sfdc</code>. <code>envName()</code> normalises and truncates so this fails at intake rather than at deploy.</td></tr>
+      <tr><td><b>Custom domains are production-only</b></td><td>A named environment cannot have one. If the demo needs a branded URL it has to be the production slot.</td></tr>
+      <tr><td><b>Quota: 3 on Free, 10 on Standard</b></td><td>Named environments are capped. On Free this binds fast - the fourth branch fails at the deploy step with <em>maximum number of staging environments</em> while everything else still passes.</td></tr>
+      <tr><td><b>Deploys run on push, not on PR</b></td><td>A pull request does not create a preview URL. Work in progress is reviewed on its own branch subdomain.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note bad"><b>The one that will bite you</b>An empty <code>deployment_environment</code> in the workflow means <b>production</b>. It does not mean "no environment" and it does not mean "skip". A branch with a blank value overwrites the live site. <code>preflight</code> refuses to proceed when it finds one.</div>
+
+  <p><code>demo-forge deploy --dry-run</code> prints the exact resource group, app name, environment name and hostname it would create, and touches nothing. Run it first, every time.</p>
+</section>
+
+<section id="sec-11">
+  <h2><span class="n">11</span>Rationale</h2>
+  <h3>Design decisions and the reasoning behind them</h3>
+
+  <div class="decisions">
+    <div class="dec">
+      <h4>A named source token beats an inferred role</h4>
+      <p>Inference runs only on roles the source app did not name.</p>
+      <p class="why"><b>Why:</b> inference got all four primary roles wrong on the first app it met, and every wrong answer was plausible enough to ship. An app that names its tokens is telling you the answer; guessing over the top of it is not cleverness.</p>
+    </div>
+    <div class="dec">
+      <h4>Measure area and position, not frequency</h4>
+      <p>Canvas is decided by painted area. Accent is decided by where a colour appears, not how saturated it is.</p>
+      <p class="why"><b>Why:</b> counting elements answers "what is most repeated", which is almost never the same question as "what is most important". One canvas outweighs forty cards.</p>
+    </div>
+    <div class="dec">
+      <h4>Budget nodes, do not cap depth</h4>
+      <p>Depth 16 with a 1,200-node ceiling, instead of a hard depth limit.</p>
+      <p class="why"><b>Why:</b> a depth cap spends the whole allowance on whatever comes first in document order, which is the navigation rail. The budget lets a deep-but-narrow content tree through while still bounding the total.</p>
+    </div>
+    <div class="dec">
+      <h4>Every generated token carries provenance</h4>
+      <p><code>/* source --color-bg */</code> versus <code>/* 40 elements */</code>, inline in the CSS.</p>
+      <p class="why"><b>Why:</b> when a stakeholder challenges a colour, the answer should be a grep rather than a recollection. It also makes the inference surface obvious - those are the tokens to check first when a demo feels subtly wrong.</p>
+    </div>
+    <div class="dec">
+      <h4>Each sub-site stays inside itself</h4>
+      <p>Navigation inside an audience prefix can never resolve to the shared front door.</p>
+      <p class="why"><b>Why:</b> these links get sent to different customers. Someone in the SAP walkthrough pressing Home must not land on another customer's story. This is a containment guarantee, enforced by a test, not a convention.</p>
+    </div>
+    <div class="dec">
+      <h4>A merge adds a URL; it never replaces the front door</h4>
+      <p>Adding an audience adds a route. It does not change what a visitor sees at the root.</p>
+      <p class="why"><b>Why:</b> the front door is a deliberate decision, not a side effect of whoever shipped last. Changing it should require someone to choose to change it.</p>
+    </div>
+    <div class="dec">
+      <h4>Reject unknown flags instead of defaulting</h4>
+      <p>Every command declares a <code>FLAGS</code> allowlist; anything outside it is an error.</p>
+      <p class="why"><b>Why:</b> <code>--app</code> was not recognised, so it fell through to a default directory and the whole build landed somewhere else entirely, silently, with a success message. A typo must fail loudly or it will cost an hour.</p>
+    </div>
+    <div class="dec">
+      <h4>Keep the capture manifest</h4>
+      <p><code>capture/manifest.json</code> ships with the demo rather than being cleaned up.</p>
+      <p class="why"><b>Why:</b> it is the only evidence that the reconstruction matches the source. Without it, "does their app really look like this" is unanswerable six weeks later.</p>
+    </div>
+  </div>
+</section>
+
+<section id="sec-12">
+  <h2><span class="n">12</span>Evidence</h2>
+  <h3>The eight bugs the live test exposed</h3>
+
+  <p>Demo Forge was written first and tested against the real Mia source app second. That test is where the value came from: eight defects, every one of which produced output that looked correct. None would have been caught by reading the code.</p>
+
+  <table>
+    <thead><tr><th style="width:5%">#</th><th style="width:26%">File</th><th>Defect</th><th style="width:16%">Class</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td><code>lib/design.mjs</code></td><td>Canvas and surface swapped - ranked by element count</td><td><span class="tag b">wrong output</span></td></tr>
+      <tr><td class="num">2</td><td><code>lib/design.mjs</code></td><td>Status green adopted as the brand accent - ranked by saturation</td><td><span class="tag b">wrong output</span></td></tr>
+      <tr><td class="num">3</td><td><code>lib/design.mjs</code></td><td>Base text size 10px instead of 13px - most frequent is not base</td><td><span class="tag b">wrong output</span></td></tr>
+      <tr><td class="num">4</td><td><code>lib/design.mjs</code></td><td>The app's own named tokens were never consulted</td><td><span class="tag b">wrong output</span></td></tr>
+      <tr><td class="num">5</td><td><code>lib/capture.mjs</code></td><td>A sidebar toggle became a route called <code>/collapse-navigation-menu</code></td><td><span class="tag b">phantom data</span></td></tr>
+      <tr><td class="num">6</td><td><code>verify-render.mjs</code>, <code>verify-routes.mjs</code></td><td>Every route counted twice; the duplicate check could never fire</td><td><span class="tag w">false confidence</span></td></tr>
+      <tr><td class="num">7</td><td><code>demo-forge.mjs</code></td><td><code>--app</code> unrecognised, fell through to a default directory, silently</td><td><span class="tag w">silent wrong</span></td></tr>
+      <tr><td class="num">8</td><td><code>lib/capture.mjs</code></td><td>Depth cap of 7 meant <code>&lt;main&gt;</code> came back with zero children</td><td><span class="tag b">empty output</span></td></tr>
+    </tbody>
+  </table>
+
+  <h4>Fix 1 - canvas by painted area, not element count</h4>
+  <p class="fixmeta"><b>lib/design.mjs</b> &middot; the canvas came back <code>#ffffff</code> when the app's own value was <code>#f9fafb</code></p>
+  <div class="code-compare">
+    <div class="cc before"><div class="hd">Before - counts elements</div><div class="body"><span class="line keep">const bg = probe.backgrounds;</span><span class="line del">// most common background wins</span><span class="line del">const ranked = Object.entries(bg)</span><span class="line del">  .sort((a, b) =&gt; b[1].count - a[1].count);</span><span class="line keep"></span><span class="line del">roles.canvas  = ranked[0][0];</span><span class="line del">roles.surface = ranked[1][0];</span></div></div>
+    <div class="cc after"><div class="hd">After - measures painted area</div><div class="body"><span class="line keep">const bg = probe.backgroundArea;</span><span class="line add">// the colour covering the most pixels is the canvas,</span><span class="line add">// however few elements paint it</span><span class="line add">const ranked = Object.entries(bg)</span><span class="line add">  .sort((a, b) =&gt; b[1].area - a[1].area);</span><span class="line keep"></span><span class="line add">roles.canvas  = ranked[0][0];</span><span class="line add">roles.surface = ranked[1][0];</span></div></div>
+  </div>
+  <div class="note info"><b>The general lesson</b>Forty cards outnumber one canvas, so counting picks the cards. One canvas covers more of the screen than forty cards, so area picks the canvas. The question was never "what repeats most".</div>
+
+  <h4>Fix 2 - accent by where it is painted, not how saturated it is</h4>
+  <p class="fixmeta"><b>lib/design.mjs</b> &middot; the accent came back <code>#22c55e</code> (a success green) when the brand was <code>#4f46e5</code></p>
+  <div class="code-compare">
+    <div class="cc before"><div class="hd">Before - saturation contest</div><div class="body"><span class="line del">const candidates = allColors</span><span class="line del">  .map(c =&gt; ({ c, s: saturation(c) }))</span><span class="line del">  .sort((a, b) =&gt; b.s - a.s);</span><span class="line keep"></span><span class="line del">roles.accent = candidates[0].c;</span></div></div>
+    <div class="cc after"><div class="hd">After - weighted by interactive surface</div><div class="body"><span class="line add">// only colours used on buttons, links and inputs</span><span class="line add">const scored = probe.interactiveColors.map(e =&gt; ({</span><span class="line add">  c: e.color,</span><span class="line focus">  w: e.asForeground * 2 + e.asBackground * 3</span><span class="line add">})).sort((a, b) =&gt; b.w - a.w);</span><span class="line keep"></span><span class="line add">roles.accent = scored[0].c;</span></div></div>
+  </div>
+  <p class="fixmeta">Background weight is 3 and foreground 2 because a filled primary button is a stronger brand signal than a coloured link.</p>
+
+  <h4>Fix 3 - base text size normalised for render scale</h4>
+  <p class="fixmeta"><b>lib/design.mjs</b> &middot; base came back <code>10px</code> when the app's own value was <code>13px</code></p>
+  <div class="code-compare">
+    <div class="cc before"><div class="hd">Before - raw, most frequent</div><div class="body"><span class="line del">const sizes = probe.fontSizes;</span><span class="line del">const base = mostFrequent(sizes);</span><span class="line keep"></span><span class="line del">scales.text = { base };</span></div></div>
+    <div class="cc after"><div class="hd">After - normalised, body-copy weighted</div><div class="body"><span class="line add">const k = probe.renderScale || 1;</span><span class="line add">const sizes = probe.fontSizes.map(f =&gt; ({</span><span class="line add">  px: Math.round(f.px / k),</span><span class="line focus">  chars: f.textLength   // weight by text, not tags</span><span class="line add">}));</span><span class="line add">const base = weightedMode(sizes, 'chars');</span><span class="line keep"></span><span class="line add">scales.text = { base };</span></div></div>
+  </div>
+  <p class="fixmeta">Section labels are numerous but carry three words each. Body copy is rarer per element and carries paragraphs. Weighting by characters asks the right question.</p>
+
+  <h4>Fix 4 - adopt the source tokens before inferring anything</h4>
+  <p class="fixmeta"><b>lib/design.mjs</b> &middot; the root cause under fixes 1 to 3 - the app named 163 properties and none were read</p>
+  <div class="code-compare">
+    <div class="cc before"><div class="hd">Before - inference only</div><div class="body"><span class="line del">export function buildTokens(probe) {</span><span class="line del">  const roles  = inferRoles(probe);</span><span class="line del">  const scales = inferScales(probe);</span><span class="line del">  return emit(roles, scales);</span><span class="line del">}</span></div></div>
+    <div class="cc after"><div class="hd">After - source first, inference fills gaps</div><div class="body"><span class="line add">export function buildTokens(probe) {</span><span class="line focus">  const roles = adoptSourceTokens(probe.customProps);</span><span class="line add">  inferRoles(probe, roles);   // only unfilled roles</span><span class="line add">  const scales = adoptSourceScales(probe.customProps);</span><span class="line add">  inferScales(probe, scales);</span><span class="line add">  return emit(roles, scales); // each carries provenance</span><span class="line add">}</span></div></div>
+  </div>
+  <p class="fixmeta"><code>ROLE_ALIASES</code> maps 12 roles to about 6 name patterns each, so <code>--color-bg</code>, <code>--background</code>, <code>--surface-canvas</code> and <code>--app-bg</code> all land on <code>canvas</code>.</p>
+
+  <h4>Fix 5 - a nav toggle is not a route</h4>
+  <p class="fixmeta"><b>lib/capture.mjs</b> &middot; produced a phantom page called <code>/collapse-navigation-menu</code></p>
+  <div class="code-compare">
+    <div class="cc before"><div class="hd">Before - any view change is a route</div><div class="body"><span class="line keep">for (const el of clickables) {</span><span class="line del">  await el.click();</span><span class="line del">  await settle(page);</span><span class="line del">  if (viewChanged()) {</span><span class="line del">    routes.push(routeFrom(el));</span><span class="line del">  }</span><span class="line keep">}</span></div></div>
+    <div class="cc after"><div class="hd">After - filtered, then signature-tested</div><div class="body"><span class="line keep">for (const el of clickables) {</span><span class="line focus">  if (isDisclosure(el)) { controls.push(el); continue; }</span><span class="line add">  await el.click();</span><span class="line add">  await settle(page);</span><span class="line focus">  const sig = await contentSignature(page);</span><span class="line add">  if (seen.has(sig)) { controls.push(el); continue; }</span><span class="line add">  seen.add(sig);</span><span class="line add">  routes.push(routeFrom(el));</span><span class="line keep">}</span></div></div>
+  </div>
+  <div class="code-compare">
+    <div class="cc before"><div class="hd">Before - no pre-filter existed</div><div class="body"><span class="line del">// nothing</span></div></div>
+    <div class="cc after"><div class="hd">After - ARIA says what a control is</div><div class="body"><span class="line add">const isDisclosure = el =&gt; el.hasAttribute('aria-expanded')</span><span class="line add">  || el.hasAttribute('aria-controls')</span><span class="line add">  || el.hasAttribute('aria-haspopup');</span><span class="line keep"></span><span class="line add">// signature ignores chrome, or a collapsing rail</span><span class="line add">// would change the digest and look like a page</span><span class="line focus">const CHROME = 'nav,[role=navigation],[class*=sidebar],'</span><span class="line focus">  + '[class*=rail],header,[class*=topbar]';</span></div></div>
+  </div>
+  <div class="note good"><b>Net effect</b>Two route slots were freed, and the crawler then reached two genuine pages it had never seen - Configuration and WatchDog. Fixing a false positive found two false negatives.</div>
+
+  <h4>Fix 6 - the gate was counting every route twice</h4>
+  <p class="fixmeta"><b>scripts/verify-render.mjs</b> and <b>scripts/verify-routes.mjs</b> &middot; reported <code>routes: 14</code> for an app with 7</p>
+  <div class="code-compare">
+    <div class="cc before"><div class="hd">Before - matches two arrays</div><div class="body"><span class="line del">const routes = [...src.matchAll(</span><span class="line focus">  /path:\s*'([^']+)'/g</span><span class="line del">)].map(m =&gt; m[1]);</span><span class="line keep"></span><span class="line keep">// also matches every entry in navItems</span></div></div>
+    <div class="cc after"><div class="hd">After - scoped to the routes export</div><div class="body"><span class="line add">const block = src.split('export const routes = [')[1]</span><span class="line add">  .split('];')[0];</span><span class="line add">const routes = [...block.matchAll(</span><span class="line focus">  /path:\s*'([^']+)'/g</span><span class="line add">)].map(m =&gt; m[1]);</span></div></div>
+  </div>
+  <div class="code-compare">
+    <div class="cc before"><div class="hd">Before - a check that could never fail</div><div class="body"><span class="line del">// every path appears twice by construction,</span><span class="line del">// so this is always true and never fires</span><span class="line del">if (new Set(routes).size !== routes.length) {</span><span class="line del">  fail('duplicate route');</span><span class="line del">}</span></div></div>
+    <div class="cc after"><div class="hd">After - real check, plus nav resolution</div><div class="body"><span class="line add">if (new Set(routes).size !== routes.length) {</span><span class="line add">  fail('duplicate route');</span><span class="line add">}</span><span class="line focus">for (const n of navItems) {</span><span class="line add">  if (!routes.includes(n.path))</span><span class="line add">    fail(`nav item ${n.path} has no route`);</span><span class="line add">}</span></div></div>
+  </div>
+
+  <h4>Fix 7 - an unknown flag must fail, not default</h4>
+  <p class="fixmeta"><b>tools/demo-forge.mjs</b> &middot; <code>--app ./x</code> built into a completely different directory and reported success</p>
+  <div class="code-compare">
+    <div class="cc before"><div class="hd">Before - silent fallthrough</div><div class="body"><span class="line del">const dir = args['--project'] || DEFAULT_DIR;</span><span class="line keep"></span><span class="line del">// --app is not read anywhere.</span><span class="line del">// It is parsed, ignored, and the build</span><span class="line del">// lands in DEFAULT_DIR with an OK message.</span></div></div>
+    <div class="cc after"><div class="hd">After - alias plus an allowlist</div><div class="body"><span class="line add">const FLAGS = {</span><span class="line add">  build: ['--url','--project','--app','--routes','--login'],</span><span class="line add">  // ... one list per command</span><span class="line add">};</span><span class="line focus">checkFlags(cmd, args);  // throws on anything unlisted</span><span class="line keep"></span><span class="line add">const dir = projectDir(args); // --project or --app</span></div></div>
+  </div>
+
+  <h4>Fix 8 - budget the outline, do not cap its depth</h4>
+  <p class="fixmeta"><b>lib/capture.mjs</b> &middot; every page came back with a navigation rail and no content</p>
+  <div class="code-compare">
+    <div class="cc before"><div class="hd">Before - hard depth cap</div><div class="body"><span class="line del">function walk(node, depth) {</span><span class="line focus">  if (depth &gt; 7) return null;</span><span class="line del">  return {</span><span class="line del">    tag: node.tagName,</span><span class="line del">    children: [...node.children]</span><span class="line del">      .map(c =&gt; walk(c, depth + 1))</span><span class="line del">  };</span><span class="line del">}</span></div></div>
+    <div class="cc after"><div class="hd">After - node budget and a chrome flag</div><div class="body"><span class="line add">let budget = 1200;</span><span class="line add">function walk(node, depth) {</span><span class="line focus">  if (depth &gt; 16 || budget-- &lt;= 0) return null;</span><span class="line add">  return {</span><span class="line add">    tag: node.tagName,</span><span class="line focus">    chrome: node.closest(CHROME) !== null,</span><span class="line add">    children: [...node.children]</span><span class="line add">      .map(c =&gt; walk(c, depth + 1))</span><span class="line add">  };</span><span class="line add">}</span></div></div>
+  </div>
+  <div class="note warn"><b>The coupled change</b><code>collectBlocks()</code> in <code>scaffold.mjs</code> had to move to depth 16 to match. The Mia stat strip sits at depth 9; with the scaffold still capped at 6, the outline was correct and the page still rendered as if nothing had been reconstructed. Outline depth is 39 nodes before, 103 after.</div>
+</section>
+
+<section id="sec-13">
+  <h2><span class="n">13</span>Using it</h2>
+  <h3>Command reference</h3>
+
+  <p>Eight commands. Every one prints what it observed rather than what it assumed, which is what makes a wrong result debuggable.</p>
+
+  <table>
+    <thead><tr><th style="width:17%">Command</th><th style="width:36%">Flags</th><th>Does</th></tr></thead>
+    <tbody>
+      <tr><td><code>capture &lt;url&gt;</code></td><td><code>--out --routes --wait --viewport --login --profile --headed --quiet</code></td><td>Measures the live app into an evidence bundle.</td></tr>
+      <tr><td><code>design</code></td><td><code>--capture --out --quiet</code></td><td>Derives tokens plus a contrast report from the measurement.</td></tr>
+      <tr><td><code>scaffold</code></td><td><code>--capture --design --out --name --force --quiet</code></td><td>Generates the working React reconstruction.</td></tr>
+      <tr><td><code>audience &lt;path&gt;</code></td><td><code>--project --app --label --guided --alias --quiet</code></td><td>Registers a shareable audience URL with its own contained route tree.</td></tr>
+      <tr><td><code>verify</code></td><td><code>--project --app --render</code></td><td>Runs the gate. <code>--render</code> adds the headless browser pass.</td></tr>
+      <tr><td><code>deploy</code></td><td><code>--project --name --resource-group --location --sku --repo --branch --dry-run --status</code></td><td>Creates and wires the Azure Static Web App.</td></tr>
+      <tr><td><code>build &lt;url&gt;</code></td><td>every capture and scaffold flag</td><td>capture, design, scaffold, verify - in order.</td></tr>
+      <tr><td><code>doctor</code></td><td><em>none</em></td><td>Checks Node, npm, Playwright, the Azure CLI and <code>gh</code>.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note info"><b>Every flag is allowlisted per command</b>A flag that is not on that command's list is an error, not a default. <code>--routes</code> on <code>deploy</code> fails immediately and tells you which flags that command does accept.</div>
+
+  <h5>The whole thing, in order</h5>
+  <pre><code># 0. once
+demo-forge doctor
+
+# 1-4. measure, theme, rebuild, gate
+demo-forge build https://app.example.com --out ./acme-demo --routes 12
+
+# behind a sign-in instead
+demo-forge build https://app.example.com --out ./acme-demo --login
+
+# 5. add the audience that gets the link
+demo-forge audience /Acme-exec --label "Acme exec brief" --guided --project ./acme-demo
+
+# 6. prove it before anyone sees it
+demo-forge verify --project ./acme-demo --render
+
+# 7. plan the deploy, then do it
+demo-forge deploy --project ./acme-demo --name acme-demo \
+  --resource-group rg-demos --location westeurope --sku Free --dry-run</code></pre>
+
+  <h5>Re-running a single stage</h5>
+  <pre><code># the theme is wrong, the capture is fine
+demo-forge design   --capture ./acme-demo/capture
+demo-forge scaffold --capture ./acme-demo/capture --out ./acme-demo --force
+
+# the crawler missed a page
+demo-forge capture https://app.example.com --out ./acme-demo/capture --routes 20</code></pre>
+</section>
+
+<section id="sec-14">
+  <h2><span class="n">14</span>Evidence</h2>
+  <h3>Verification evidence</h3>
+
+  <p>Every claim in this document was produced by running the tool against the live Project Mia source application, not by reading the code.</p>
+
+  <table>
+    <thead><tr><th style="width:24%">Check</th><th style="width:14%">Result</th><th>What was observed</th></tr></thead>
+    <tbody>
+      <tr><td><code>doctor</code></td><td><span class="tag g">pass</span></td><td>Node 22, npm 10, Playwright with chromium, Azure CLI signed in, <code>gh</code> authenticated. Five of five green.</td></tr>
+      <tr><td>Frame resolution</td><td><span class="tag g">pass</span></td><td><code>weight=10011 els=183 props=163 themed=true</code> - the app frame, not the Power Apps player chrome.</td></tr>
+      <tr><td>Cold-start <code>build</code></td><td><span class="tag g">pass</span></td><td>From an empty directory: 6 routes discovered, 163 custom properties resolved, npm install, Vite build, gate run. 7 screens PASS.</td></tr>
+      <tr><td>Home page fidelity</td><td><span class="tag g">pass</span></td><td>Phase stepper present, all four KPI tiles at exact source values (3 WAVES / 8 TASKS / 63% COMPLETE / 0 TEAM), activity panel rebuilt.</td></tr>
+      <tr><td>Table fidelity</td><td><span class="tag g">pass</span></td><td>The documents route rebuilt its table with real headers - FILE, SIZE, UPLOADED, ACTIONS - and real rows.</td></tr>
+      <tr><td>Containment</td><td><span class="tag g">pass</span></td><td><code>audience /Exec-brief --guided</code>: Home inside the sub-site resolved <code>home -&gt; /Exec-brief/home</code>, and the caller's original casing survived.</td></tr>
+      <tr><td><code>deploy --dry-run</code></td><td><span class="tag g">pass</span></td><td>Resolved a real subscription and printed a complete, valid plan without creating anything.</td></tr>
+      <tr><td>Authenticated capture</td><td><span class="tag w">untested</span></td><td>The <code>--login</code> and <code>--profile</code> paths were never exercised. See section 15.</td></tr>
+    </tbody>
+  </table>
+
+  <details class="raw-data">
+    <summary>Line counts across the installed skill</summary>
+    <div class="in">
+      <table>
+        <thead><tr><th>File</th><th class="num">Lines</th><th>Role</th></tr></thead>
+        <tbody>
+          <tr><td><code>tools/lib/capture.mjs</code></td><td class="num">679</td><td>Playwright capture, frame scoring, PROBE, SPA crawler</td></tr>
+          <tr><td><code>tools/lib/scaffold.mjs</code></td><td class="num">533</td><td>Capture to React, block classification, audience registration</td></tr>
+          <tr><td><code>tools/lib/design.mjs</code></td><td class="num">526</td><td>Token adoption, role inference, contrast, provenance</td></tr>
+          <tr><td><code>tools/demo-forge.mjs</code></td><td class="num">363</td><td>CLI, 8 commands, flag allowlist</td></tr>
+          <tr><td><code>assets/template/src/demo/guide.js</code></td><td class="num">357</td><td>The guided-tour engine</td></tr>
+          <tr><td><code>SKILL.md</code></td><td class="num">246</td><td>The contract the agent follows</td></tr>
+          <tr><td><code>assets/template/src/shell/primitives.jsx</code></td><td class="num">236</td><td>The 9 components the scaffold emits</td></tr>
+          <tr><td><code>tools/lib/deploy.mjs</code></td><td class="num">164</td><td>Azure CLI wrapper</td></tr>
+          <tr><td><code>assets/template/src/shell/AppShell.jsx</code></td><td class="num">158</td><td>Rail, topbar, outlet</td></tr>
+          <tr><td><code>assets/template/scripts/verify-render.mjs</code></td><td class="num">158</td><td>The render and containment gate</td></tr>
+          <tr><td><code>references/*.md</code></td><td class="num">644</td><td>Six reference documents</td></tr>
+          <tr><td><code>assets/template/src/demo/scope.js</code></td><td class="num">72</td><td>Sub-site containment</td></tr>
+          <tr><td><code>assets/template/src/demo/registry.js</code></td><td class="num">64</td><td>The audience registry</td></tr>
+          <tr><td><code>assets/template/scripts/verify-audiences.mjs</code></td><td class="num">51</td><td>Registry and script consistency</td></tr>
+          <tr><td><code>assets/template/scripts/verify-routes.mjs</code></td><td class="num">48</td><td>Duplicate and nav-resolution check</td></tr>
+          <tr><td><code>assets/template/scripts/verify-all.mjs</code></td><td class="num">20</td><td>Gate runner</td></tr>
+          <tr><td><b>Total</b></td><td class="num"><b>4,319</b></td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+  <details class="raw-data">
+    <summary>Pinned versions in the generated demo</summary>
+    <div class="in">
+      <table>
+        <thead><tr><th>Package</th><th>Version</th><th>Why pinned</th></tr></thead>
+        <tbody>
+          <tr><td>react / react-dom</td><td>18.3.1</td><td>Stable concurrent rendering; nothing in the template needs 19.</td></tr>
+          <tr><td>vite</td><td>5.4.11</td><td>Build tooling for the reconstruction.</td></tr>
+          <tr><td>vite-plugin-singlefile</td><td>2.0.3</td><td>Inlines everything into one <code>index.html</code> of about 170 kB, so a demo can be emailed or opened from a USB stick.</td></tr>
+          <tr><td>playwright</td><td>1.59.1</td><td>Capture and the render gate use the same browser, so the gate tests what capture saw.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+</section>
+
+<section id="sec-15">
+  <h2><span class="n">15</span>Using it</h2>
+  <h3>Limits, gaps and known risks</h3>
+
+  <div class="cards">
+    <div class="card"><span class="k">Untested</span><h4>Authenticated capture</h4><p>The <code>--login</code> and <code>--profile</code> paths have never been run. Exercising them needs a real tenant session. Assume the first authenticated capture will need debugging, and budget for it.</p></div>
+    <div class="card"><span class="k">Unproven</span><h4>Non-SPA route discovery</h4><p>The crawler was built and tested against a single-page application. A server-rendered site with real page loads is a different traversal problem and has not been validated.</p></div>
+    <div class="card"><span class="k">Structural</span><h4>Unnamed design systems</h4><p>An app with no CSS custom properties falls back entirely to inference - the path that got all four roles wrong before it was fixed. The fixes make it better, not correct. Check the provenance comments.</p></div>
+    <div class="card"><span class="k">Structural</span><h4>Canvas and WebGL</h4><p>Anything drawn rather than laid out is invisible to the DOM probe. Charts rendered to canvas come back as an empty box and need a hand-built placeholder.</p></div>
+    <div class="card"><span class="k">Quota</span><h4>Three Free environments</h4><p>On the Free SKU only three named environments exist at once. The fourth demo fails at deploy while every gate still passes, which reads as a tooling bug and is not one.</p></div>
+    <div class="card"><span class="k">Judgement</span><h4>The gate cannot check meaning</h4><p>It proves a page has content. It cannot prove the content is the <em>right</em> content. Bug 8 passed every gate while rendering a visibly broken page. Look at the screens.</p></div>
+  </div>
+
+  <div class="note warn"><b>The failure mode to watch for</b>Every one of the eight bugs produced output that looked correct. Wrong colours look like a design choice. A phantom route looks like a page you forgot about. A double-counted gate looks like extra thoroughness. The only defence that worked was diffing the tool's output against the source app's own values - so do that on the first run against any new application, before writing a line of storyline.</div>
+</section>
+
+<section id="sec-16">
+  <h2><span class="n">16</span>Using it</h2>
+  <h3>Runbook: your next demo, start to finish</h3>
+
+  <ol>
+    <li><b>Answer the five intake questions out loud.</b> If you cannot state the one thing the audience must remember, stop - the demo has no argument yet and rebuilding screens will not give it one.</li>
+    <li><b>Run <code>doctor</code>.</b> Thirty seconds, and it fails on the missing dependency rather than halfway through a capture.</li>
+    <li><b>Capture with <code>--routes</code> set slightly high.</b> Discovering twelve screens and using six is cheap. Re-crawling because you capped at five is not.</li>
+    <li><b>Open <code>src/theme/tokens.css</code> and read the provenance comments.</b> Anything marked <code>/* N elements */</code> is a guess. Compare those against the source app's <code>:root</code> in devtools before going further.</li>
+    <li><b>Open the generated app and look at every screen.</b> The gate proves content exists; your eyes prove it is the right content. This is the step that catches a depth-cap class of bug.</li>
+    <li><b>Register the audience before writing the storyline.</b> <code>audience /Name --guided</code> creates the script file the steps go into, and the route prefix the link will use.</li>
+    <li><b>Write the steps.</b> One per thing the viewer must do. Set <code>isComplete</code> honestly - it is the difference between a tour that waits for the room and one that races it.</li>
+    <li><b>Run <code>verify --render</code>.</b> Green on every screen, including containment.</li>
+    <li><b>Run <code>deploy --dry-run</code>, read the plan, then deploy.</b> Confirm the environment name is a suffix, alphanumeric and at most 16 characters, and that you have a free slot in the quota.</li>
+    <li><b>Send the audience URL, not the root.</b> Containment only protects the person who arrives inside the sub-site.</li>
+  </ol>
+
+  <div class="note good"><b>The honest time estimate</b>A cold <code>build</code> against a public SPA is minutes. Reviewing the tokens and the screens is the better part of an hour. The storyline is as long as the argument takes to write, and is the only part no tool can shorten. Project Mia took weeks by hand; the second application is a day, and most of that day is judgement rather than reconstruction.</div>
+</section>
+
+<footer class="doc">
+  <p><b>Demo Forge</b> - architecture and operating manual. Generated 15-09-26 from the installed skill at <code>~/.copilot/skills/demo-forge</code> and from a verified end-to-end run against the Project Mia source application.</p>
+  <p>Figures are measured, not estimated: line counts from the source tree, token and route counts from <code>capture/manifest.json</code>, gate results from the headless run. Contains no customer data, no credentials and no tenant or subscription identifiers.</p>
+  <p>Reviewed by Ragnar DD-MM-YY-HH-MM [ ] Comments from Ragnar:<br>Assisted by Ragnar's Agent.</p>
+</footer>
+</main>
+</div>
+
+<script>
+document.querySelectorAll('pre').forEach(function(pre){
+  var b=document.createElement('button');
+  b.className='copy';b.type='button';b.textContent='Copy';
+  b.addEventListener('click',function(){
+    var t=pre.querySelector('code')?pre.querySelector('code').innerText:pre.innerText;
+    navigator.clipboard.writeText(t).then(function(){
+      b.textContent='Copied';b.classList.add('done');
+      setTimeout(function(){b.textContent='Copy';b.classList.remove('done');},1400);
+    });
+  });
+  pre.appendChild(b);
+});
+(function(){
+  var links=[].slice.call(document.querySelectorAll('#sidenav a'));
+  var map={};links.forEach(function(a){var el=document.querySelector(a.getAttribute('href'));if(el)map[a.getAttribute('href')]=el;});
+  var obs=new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(!e.isIntersecting)return;
+      links.forEach(function(a){a.classList.toggle('on',map[a.getAttribute('href')]===e.target);});
+    });
+  },{rootMargin:'0px 0px -72% 0px',threshold:0});
+  Object.keys(map).forEach(function(k){obs.observe(map[k]);});
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+name: Azure Static Web Apps CI/CD
+
+# Deploys happen on PUSH, not on pull request.
+#
+#   main         -> production
+#   projects/**  -> its own Azure named environment, on its own subdomain
+#
+# Azure caps staging environments (3 on Free, 10 on Standard) and per-pull-request
+# previews contend for the same pool, so a busy week of pull requests can evict a
+# workstream's subdomain and break a link that has already been shared. Branch
+# environments are stable and predictable. Pull requests still run the full gate.
+on:
+  push:
+    branches: [main, 'projects/**']
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches: [main]
+
+jobs:
+  verify:
+    if: github.event_name == 'push' || github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    name: Verify
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - name: Routes resolve and have no duplicates
+        run: node scripts/verify-routes.mjs
+      - name: The audience registry is intact
+        run: node scripts/verify-audiences.mjs
+      - name: Build
+        run: npm run build
+      - name: Render gate - every route paints, no console errors
+        run: |
+          npx playwright install --with-deps chromium
+          node scripts/verify-render.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: render-evidence
+          path: .render-evidence/
+          if-no-files-found: ignore
+
+  deploy:
+    if: github.event_name == 'push'
+    needs: verify
+    runs-on: ubuntu-latest
+    name: Build and Deploy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci && npm run build
+      # An empty value means PRODUCTION to the Azure action, which is what main
+      # wants. A projects/** branch gets a named environment of its own. The env
+      # name must be alphanumeric and 16 characters or fewer - an Azure constraint,
+      # not a preference.
+      - name: Resolve the deployment environment
+        id: env
+        run: |
+          REF="${{ github.ref_name }}"
+          if [ "$REF" = "main" ]; then
+            echo "name=" >> "$GITHUB_OUTPUT"
+          else
+            SLUG=$(printf '%s' "${REF#projects/}" | tr -cd '[:alnum:]' | cut -c1-16)
+            echo "name=$SLUG" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: '/'
+          api_location: ''
+          output_location: 'dist'
+          deployment_environment: ${{ steps.env.outputs.name }}
+
+  close_pr:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    name: Close Pull Request
+    steps:
+      - uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: close
