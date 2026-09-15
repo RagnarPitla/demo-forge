@@ -9,7 +9,7 @@
 //
 // The result is a real application that a person can open, read, and edit.
 
-import { mkdir, writeFile, readFile, cp } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, readdir, cp } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -412,6 +412,70 @@ export default routes;
 
 /* --- main ----------------------------------------------------------------- */
 
+/* --- work the operator owns ------------------------------------------------
+ *
+ * `scaffold --force` copies the template over the project and regenerates
+ * src/. Three files stop being ours the moment somebody uses the project:
+ * the audience registry, the narration index, and the narration itself.
+ * Overwriting them deletes registered audiences and written narration with no
+ * warning - and re-running scaffold to fix a theme is in the runbook, so it is
+ * a normal thing to do. Snapshot before, restore after.
+ */
+
+// A generated narration is every step still saying TODO. Anything else is
+// somebody's writing. An audience script has no `script:` fields at all - it
+// re-maps the default - so an unrecognised shape counts as written, which is
+// the direction that loses nothing.
+function isGeneratedNarration(src) {
+  const scripts = [...src.matchAll(/script:\s*'([^']*)'/g)].map(m => m[1]);
+  if (!scripts.length) return false;
+  return scripts.every(s => s.startsWith('TODO:'));
+}
+
+async function snapshotOperatorFiles(outDir) {
+  const keep = new Map();
+
+  const reg = join(outDir, 'src/demo/registry.js');
+  if (existsSync(reg)) {
+    const cur = await readFile(reg, 'utf8');
+    const tpl = await readFile(join(TEMPLATE, 'src/demo/registry.js'), 'utf8');
+    if (cur !== tpl) keep.set('src/demo/registry.js', cur);
+  }
+
+  const scriptsDir = join(outDir, 'src/demo/scripts');
+  if (existsSync(scriptsDir)) {
+    for (const f of await readdir(scriptsDir)) {
+      if (!f.endsWith('.js') || f.endsWith('.generated.js')) continue;
+      const rel = `src/demo/scripts/${f}`;
+      const cur = await readFile(join(scriptsDir, f), 'utf8');
+      // index.js only matters once an audience has been appended to it.
+      if (f === 'index.js') {
+        if (/^\s*,\s*'/m.test(cur)) keep.set(rel, cur);
+        continue;
+      }
+      if (!isGeneratedNarration(cur)) keep.set(rel, cur);
+    }
+  }
+
+  return keep;
+}
+
+async function restoreOperatorFiles(outDir, keep, generatedDefault) {
+  const restored = [];
+  for (const [rel, content] of keep) {
+    await mkdir(dirname(join(outDir, rel)), { recursive: true });
+    await writeFile(join(outDir, rel), content);
+    restored.push(rel);
+  }
+  // The routes may have changed under the narration that was kept, so the
+  // fresh version is written beside it rather than thrown away.
+  if (keep.has('src/demo/scripts/default.js')) {
+    await writeFile(join(outDir, 'src/demo/scripts/default.generated.js'), generatedDefault);
+    restored.push('src/demo/scripts/default.generated.js (new, for merging)');
+  }
+  return restored;
+}
+
 export async function scaffold({ captureDir, outDir, designDir, name, force = false }) {
   const capture = JSON.parse(await readFile(join(captureDir, 'capture.json'), 'utf8'));
   if (existsSync(join(outDir, 'src')) && !force) {
@@ -431,6 +495,7 @@ export async function scaffold({ captureDir, outDir, designDir, name, force = fa
   routes.sort((a, b) => (a.slug === 'home' ? -1 : b.slug === 'home' ? 1 : 0));
 
   await mkdir(outDir, { recursive: true });
+  const operatorFiles = await snapshotOperatorFiles(outDir);
   await cp(TEMPLATE, outDir, {
     recursive: true,
     force: true,
@@ -471,7 +536,8 @@ export async function scaffold({ captureDir, outDir, designDir, name, force = fa
   }
   await writeFile(join(outDir, 'src/routes/index.jsx'), buildRouteIndex(routes));
   await writeFile(join(outDir, 'src/data/seed.js'), buildSeed(capture, routes));
-  await writeFile(join(outDir, 'src/demo/scripts/default.js'), buildScript(routes, capture.timeline || []));
+  const generatedDefault = buildScript(routes, capture.timeline || []);
+  await writeFile(join(outDir, 'src/demo/scripts/default.js'), generatedDefault);
   await writeFile(
     join(outDir, 'src/demo/scripts/index.js'),
     `/* Narration modules, one per audience.
@@ -523,12 +589,15 @@ export default SCRIPTS;
     'node_modules/\ndist/\n.render-evidence/\n.DS_Store\n*.log\n'
   );
 
+  const preserved = await restoreOperatorFiles(outDir, operatorFiles, generatedDefault);
+
   return {
     outDir,
     slug,
     title,
     routes: routes.map(r => ({ slug: r.slug, label: r.label, path: routePath(r.slug) })),
-    tokens: tokensSrc && existsSync(tokensSrc) ? 'extracted' : 'placeholder'
+    tokens: tokensSrc && existsSync(tokensSrc) ? 'extracted' : 'placeholder',
+    preserved
   };
 }
 

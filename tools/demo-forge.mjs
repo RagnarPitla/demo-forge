@@ -260,6 +260,14 @@ async function cmdScaffold(captureDirArg, designDirArg, outOverride) {
   say(`  tokens    ${r.tokens}`);
   say(`  routes    ${r.routes.length}`);
   for (const rt of r.routes) say(`            ${rt.path.padEnd(20)} ${rt.label}`);
+  if (r.preserved?.length) {
+    say(`\n  kept your work - not overwritten:`);
+    for (const f of r.preserved) say(`            ${f}`);
+    if (r.preserved.some(f => f.includes('default.generated.js'))) {
+      say(`  the routes may have changed under that narration - diff it against`);
+      say(`  default.generated.js before the next run.`);
+    }
+  }
   say(`\nnext:`);
   say(`  cd ${r.outDir} && npm install && npm run dev`);
   say(`  then edit src/demo/scripts/default.js - every step is a TODO on purpose\n`);

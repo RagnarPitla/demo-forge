@@ -72,6 +72,8 @@ blockquote.shape b{color:var(--text)}
 
 /* tables */
 table{width:100%;border-collapse:collapse;margin:0 0 16px;font-size:13.5px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.table-wrap{max-width:100%;overflow-x:auto;margin:0 0 16px}
+.table-wrap table{margin-bottom:0}
 th{text-align:left;font:700 10.5px/1.3 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--text-3);padding:10px 12px;border-bottom:1px solid var(--line);background:var(--surface-alt);vertical-align:bottom}
 td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
 tr:last-child td{border-bottom:none}
@@ -138,7 +140,7 @@ details.raw-data summary{cursor:pointer;padding:11px 16px;font:650 13px/1 var(--
 details.raw-data summary::-webkit-details-marker{display:none}
 details.raw-data summary::before{content:"\25B8";display:inline-block;margin-right:9px;color:var(--text-3);transition:transform .15s}
 details.raw-data[open] summary::before{transform:rotate(90deg)}
-details.raw-data .in{padding:0 16px 14px;border-top:1px solid var(--line);margin-top:0;padding-top:14px}
+details.raw-data .in{padding:0 16px 14px;border-top:1px solid var(--line);margin-top:0;padding-top:14px;overflow-x:auto}
 details.raw-data table{margin-bottom:0}
 
 footer.doc{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);font-size:12.5px;color:var(--text-3)}
@@ -152,11 +154,14 @@ footer.doc b{color:var(--text-2)}
 
 @media (max-width:980px){
   .wrap{grid-template-columns:1fr;gap:0;padding:0 20px 64px}
-  .side{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line);margin-bottom:24px}
-  .side nav{display:flex;flex-wrap:wrap;gap:2px}
+  .side{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line);margin-bottom:24px;min-width:0;overflow-x:hidden}
+  .side nav{display:flex;flex-wrap:wrap;gap:2px;min-width:0}
+  .side a{white-space:normal;min-width:0}
   .side .grp{width:100%}
+  main{min-width:0}
   .code-compare{grid-template-columns:1fr}
   .toc ol{columns:1}
+  section > table{display:block;max-width:100%;overflow-x:auto}
 }
 @media print{
   .side,.copy,.dist{display:none}
@@ -200,6 +205,7 @@ footer.doc b{color:var(--text-2)}
     <a href="#sec-16">16. Runbook</a>
     <div class="grp">Latest change</div>
     <a href="#sec-17">17. Directed capture</a>
+    <a href="#sec-18">18. Signed-in capture</a>
   </nav>
 </aside>
 
@@ -211,14 +217,15 @@ footer.doc b{color:var(--text-2)}
     <span class="pill ac">Skill + agent + CLI</span>
     <span class="pill">Node 22 / Playwright / React 18 / Vite 5</span>
     <span class="pill">Installed at ~/.copilot/skills/demo-forge</span>
-    <span class="pill on">Verified end to end against the live Mia site</span>
+    <span class="pill on">Verified against the live Mia site</span>
+    <span class="pill on">Verified against a signed-in Copilot Studio tenant</span>
   </div>
   <div class="stat-row">
-    <div class="stat"><b>4,945</b><span>lines of tooling</span></div>
+    <div class="stat"><b>4,571</b><span>lines of tooling</span></div>
     <div class="stat"><b>7</b><span>pipeline stages</span></div>
     <div class="stat"><b>8</b><span>CLI commands</span></div>
     <div class="stat"><b>163</b><span>design tokens recovered</span></div>
-    <div class="stat"><b>13</b><span>bugs found by testing</span></div>
+    <div class="stat"><b>22</b><span>bugs found by testing</span></div>
     <div class="stat"><b>3</b><span>verify gates</span></div>
   </div>
 </header>
@@ -242,6 +249,7 @@ footer.doc b{color:var(--text-2)}
     <li><a href="#sec-15">Limits, gaps and known risks</a></li>
     <li><a href="#sec-16">Runbook: your next demo, start to finish</a></li>
     <li><a href="#sec-17">Directed capture: you give the clicks, it follows them</a></li>
+    <li><a href="#sec-18">Authenticated capture: pointing it at an app you have to sign in to</a></li>
   </ol>
 </div>
 
@@ -874,7 +882,7 @@ footer.doc b{color:var(--text-2)}
   <table>
     <thead><tr><th style="width:17%">Command</th><th style="width:36%">Flags</th><th>Does</th></tr></thead>
     <tbody>
-      <tr><td><code>capture &lt;url&gt;</code></td><td><code>--out --routes --wait --viewport --login --profile --headed --quiet</code></td><td>Measures the live app into an evidence bundle.</td></tr>
+      <tr><td><code>capture &lt;url&gt;</code></td><td><code>--out --routes --wait --viewport --login --profile --headed --quiet --do --steps --browser --edge-profile --chrome-profile --fresh-profile</code></td><td>Measures the live app into an evidence bundle. With <code>--do</code> or <code>--steps</code> it follows your instructions instead of crawling.</td></tr>
       <tr><td><code>design</code></td><td><code>--capture --out --quiet</code></td><td>Derives tokens plus a contrast report from the measurement.</td></tr>
       <tr><td><code>scaffold</code></td><td><code>--capture --design --out --name --force --quiet</code></td><td>Generates the working React reconstruction.</td></tr>
       <tr><td><code>audience &lt;path&gt;</code></td><td><code>--project --app --label --guided --alias --quiet</code></td><td>Registers a shareable audience URL with its own contained route tree.</td></tr>
@@ -894,8 +902,11 @@ demo-forge doctor
 # 1-4. measure, theme, rebuild, gate
 demo-forge build https://app.example.com --out ./acme-demo --routes 12
 
-# behind a sign-in instead
-demo-forge build https://app.example.com --out ./acme-demo --login
+# behind a sign-in instead - borrow a signed-in browser profile.
+# First run needs --headed and a phone; the clone is reused after that.
+demo-forge build https://app.example.com --out ./acme-demo --headed \
+  --edge-profile you@contoso.com \
+  --steps ./steps.txt
 
 # 5. add the audience that gets the link
 demo-forge audience /Acme-exec --label "Acme exec brief" --guided --project ./acme-demo
@@ -986,7 +997,9 @@ demo-forge capture https://app.example.com --out ./acme-demo/capture --routes 20
   <h3>Limits, gaps and known risks</h3>
 
   <div class="cards">
-    <div class="card"><span class="k">Untested</span><h4>Authenticated capture</h4><p>The <code>--login</code> and <code>--profile</code> paths have never been run. Exercising them needs a real tenant session. Assume the first authenticated capture will need debugging, and budget for it.</p></div>
+    <div class="card"><span class="k">Now proven</span><h4>Authenticated capture</h4><p>Was the largest untested gap. <a href="#sec-18">Section 18</a> closed it against a real Copilot Studio tenant, and it cost eight bugs to do. Use <code>--edge-profile &lt;email&gt;</code>; the older <code>--login</code> and <code>--profile</code> paths are still unexercised.</p></div>
+    <div class="card"><span class="k">Friction</span><h4>MFA on every fresh clone</h4><p>Conditional access can challenge each new profile clone regardless of "don't ask again". The first run against a tenant needs <code>--headed</code> and a phone; later runs reuse the clone. Budget for one interactive run.</p></div>
+    <div class="card"><span class="k">Side effects</span><h4>A directed capture really clicks Save</h4><p>There is no dry run. A flow that creates a record creates one every time it is run, and a capture usually gets run several times while the steps are tuned. Point write flows at a disposable environment.</p></div>
     <div class="card"><span class="k">Unproven</span><h4>Non-SPA route discovery</h4><p>The crawler was built and tested against a single-page application. A server-rendered site with real page loads is a different traversal problem and has not been validated.</p></div>
     <div class="card"><span class="k">Structural</span><h4>Unnamed design systems</h4><p>An app with no CSS custom properties falls back entirely to inference - the path that got all four roles wrong before it was fixed. The fixes make it better, not correct. Check the provenance comments.</p></div>
     <div class="card"><span class="k">Structural</span><h4>Canvas and WebGL</h4><p>Anything drawn rather than laid out is invisible to the DOM probe. Charts rendered to canvas come back as an empty box and need a hand-built placeholder.</p></div>
@@ -994,7 +1007,7 @@ demo-forge capture https://app.example.com --out ./acme-demo/capture --routes 20
     <div class="card"><span class="k">Judgement</span><h4>The gate cannot check meaning</h4><p>It proves a page has content. It cannot prove the content is the <em>right</em> content. Bug 8 passed every gate while rendering a visibly broken page. Look at the screens.</p></div>
   </div>
 
-  <div class="note warn"><b>The failure mode to watch for</b>Every one of the eight bugs produced output that looked correct. Wrong colours look like a design choice. A phantom route looks like a page you forgot about. A double-counted gate looks like extra thoroughness. The only defence that worked was diffing the tool's output against the source app's own values - so do that on the first run against any new application, before writing a line of storyline.</div>
+  <div class="note warn"><b>The failure mode to watch for</b>Every one of the twenty-two bugs found so far produced output that looked correct. Wrong colours look like a design choice. A phantom route looks like a page you forgot about. An empty instructions box looks like a step you have not written yet. The only defence that worked was diffing the tool's output against the source app's own values - so do that on the first run against any new application, before writing a line of storyline.</div>
 </section>
 
 <section id="sec-16">
@@ -1213,9 +1226,328 @@ BUILD PASS</code></pre>
   <p>Recording a live session - you click, it writes the step list - is not built. Directed capture is the half that exists. The step format is deliberately plain text with one instruction per line so a recorder can emit it later without changing anything downstream.</p>
 </section>
 
+<section id="sec-18">
+  <h2><span class="n">18</span>Latest change</h2>
+  <h3>Authenticated capture: pointing it at an app you have to sign in to</h3>
+
+  <p class="lede">Everything above was proven against an anonymous site. Mia's click-through is public - you open the URL and the app is there. Most applications worth demonstrating are not like that, and the first one we pointed this at was Copilot Studio, where nothing at all is visible until Entra has decided who you are.</p>
+
+  <p>The task was to build an agent and demo the building of it: open Copilot Studio, create a finance reconciliation agent, name it, write its instructions, save it - and turn that flow into a click-through. It closed the largest untested gap in the tool and exposed eight more bugs on the way.</p>
+
+  <blockquote class="shape">
+    <b>A capture may borrow a session. It may never own one, and it may never ship one.</b>
+    The signed-in profile is copied, used once, and left behind. Nothing about the identity reaches the generated demo, which still has no auth, no backend and no network call.
+  </blockquote>
+
+  <h3>Inventory of changes</h3>
+  <p>Commit <code>2c2b29a</code> - 11 files, +588 / -34. Change 8 below landed separately, after this section was first written.</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>File</th><th>Change</th><th>Why</th><th>Lines</th></tr></thead>
+    <tbody>
+      <tr><td><code>tools/lib/profile.mjs</code></td><td><b>New.</b> Profile discovery by account email, session-only clone</td><td>Find the right profile, copy only what carries the session</td><td>+154</td></tr>
+      <tr><td><code>tools/lib/capture.mjs</code></td><td><code>browserChannel</code> option on <code>captureSite</code></td><td>Bundled Chromium cannot decrypt Edge's cookies</td><td rowspan="4">+72 / -6</td></tr>
+      <tr><td><code>tools/lib/capture.mjs</code></td><td>Hotspot recording, with a pending rect carried forward</td><td>Screenshots had nothing to click</td></tr>
+      <tr><td><code>tools/lib/capture.mjs</code></td><td><code>try</code> steps never record a screen</td><td><b>Bug.</b> Sign-in screens were becoming demo screens</td></tr>
+      <tr><td><code>tools/lib/capture.mjs</code></td><td>Entry screen recorded lazily, at the first acting step</td><td><b>Bug.</b> The demo opened on a real account picker</td></tr>
+      <tr><td><code>tools/lib/steps.mjs</code></td><td><code>try</code> / <code>optional</code> prefix</td><td>A sign-in flow is a set of maybes, not a sequence</td><td rowspan="4">+107 / -18</td></tr>
+      <tr><td><code>tools/lib/steps.mjs</code></td><td><code>as "&lt;name&gt;"</code> on any step</td><td>Typing steps were naming routes after their own text</td></tr>
+      <tr><td><code>tools/lib/steps.mjs</code></td><td>Real keystrokes for contenteditable targets</td><td><b>Bug.</b> Rich-text editors silently reverted the value</td></tr>
+      <tr><td><code>tools/lib/steps.mjs</code></td><td>Element rect returned from the click</td><td>The hotspot's position comes from the real control</td></tr>
+      <tr><td><code>tools/lib/scaffold.mjs</code></td><td><code>faithful</code> check before reconstructing a screen</td><td><b>Bug.</b> Fluent screens rebuilt as empty placeholders</td><td rowspan="3">+72 / -10</td></tr>
+      <tr><td><code>tools/lib/scaffold.mjs</code></td><td><code>Shot</code> emit; screenshots inlined to <code>src/demo/shots.js</code></td><td>A single-file build cannot depend on sibling PNGs</td></tr>
+      <tr><td><code>tools/lib/scaffold.mjs</code></td><td>Step name used as the header on shot-backed screens</td><td><b>Bug.</b> Stale DOM headings read "Untitled Agent"</td></tr>
+      <tr><td><code>tools/demo-forge.mjs</code></td><td>Four flags, clone wiring, <code>FLAGS</code> allowlist entries</td><td><b>Bug.</b> A flag absent from the allowlist is rejected</td><td>+37</td></tr>
+      <tr><td><code>assets/template/src/shell/primitives.jsx</code></td><td><code>Shot</code> primitive with positioned hotspot buttons</td><td>The clickable layer over a screenshot</td><td>+61</td></tr>
+      <tr><td><code>assets/template/src/theme/base.css</code></td><td><code>.shot-hotspot</code> pulse, hover, focus, reduced-motion</td><td>A hotspot nobody notices is not a hotspot</td><td>+36</td></tr>
+      <tr><td><code>assets/template/src/App.jsx</code></td><td><code>/home</code> falls back to <code>/</code></td><td><b>Bug.</b> Home inside a guided audience threw "No such screen"</td><td>+7</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>Three things that each break a borrowed session on their own</h3>
+  <p>Reusing a browser profile sounds like one line of Playwright config. It is three constraints, and getting two of them right produces the same symptom as getting none of them right: a page that looks exactly like being signed out.</p>
+
+  <div class="cards">
+    <div class="card"><span class="k">Constraint 1</span><h4>It must be the real browser</h4><p>macOS seals the cookie store against the keychain entry <b>Microsoft Edge Safe Storage</b>. Playwright's bundled Chromium cannot read that entry, so it decrypts every cookie to an empty string - no error, no warning, just an empty jar. Requires <code>channel: 'msedge'</code>.</p></div>
+    <div class="card"><span class="k">Constraint 2</span><h4>It must be a copy</h4><p>A running browser holds an exclusive lock on its user-data directory, and Ragnar's Edge was open with the profile in use. The copy is also the safety property: a capture can crash, hang or be killed and the real profile is untouched.</p></div>
+    <div class="card"><span class="k">Constraint 3</span><h4><code>Local State</code> must come too</h4><p>It sits <em>beside</em> the profile folders, not inside one, and it holds the encrypted key the cookie store is sealed with. Copy the profile without it and you get the signed-out failure again, from a completely different cause.</p></div>
+  </div>
+
+  <div class="note warn"><b>Why this took a while to see</b>All three failures present as "the app shows a sign-in page". There is no diagnostic that distinguishes an empty cookie jar from an expired session from a missing decryption key. The only way through was to eliminate them one at a time.</div>
+
+  <figure>
+    <svg viewBox="0 0 980 250" role="img" aria-labelledby="clone-t clone-d">
+      <title id="clone-t">How a signed-in profile is borrowed</title>
+      <desc id="clone-d">The live Edge profile directory is locked and 1.1 gigabytes. Only ten session-bearing parts plus Local State are copied into a scratch user-data directory, where the profile is renamed Default. Playwright launches the real Edge against that scratch directory.</desc>
+      <defs><marker id="ar18" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#c8c6c4"/></marker></defs>
+      <g font-family="Segoe UI, system-ui, sans-serif">
+        <rect x="8" y="42" width="238" height="150" rx="6" fill="#fde7e9" stroke="#a4262c"/>
+        <text x="127" y="66" font-size="13" font-weight="700" text-anchor="middle" fill="#a4262c">Live Edge profile</text>
+        <text x="127" y="86" font-size="11" text-anchor="middle" fill="#484644">~/Library/.../Edge/Profile 16</text>
+        <text x="127" y="108" font-size="11" text-anchor="middle" fill="#484644">1.1 GB - 981 MB of it is</text>
+        <text x="127" y="124" font-size="11" text-anchor="middle" fill="#484644">Service Worker cache</text>
+        <text x="127" y="150" font-size="11" font-weight="700" text-anchor="middle" fill="#a4262c">LOCKED - browser is open</text>
+        <text x="127" y="170" font-size="11" text-anchor="middle" fill="#484644">never opened, never written</text>
+
+        <path d="M252 117 L316 117" stroke="#c8c6c4" stroke-width="1.5" marker-end="url(#ar18)"/>
+        <text x="284" y="108" font-size="10" text-anchor="middle" fill="#797775">copy</text>
+
+        <rect x="322" y="18" width="286" height="200" rx="6" fill="#fff4ce" stroke="#8a6d00"/>
+        <text x="465" y="40" font-size="13" font-weight="700" text-anchor="middle" fill="#8a6d00">Ten session parts only</text>
+        <text x="465" y="62" font-size="11" text-anchor="middle" fill="#484644">Cookies &middot; Cookies-journal &middot; Login Data</text>
+        <text x="465" y="80" font-size="11" text-anchor="middle" fill="#484644">Web Data &middot; Preferences &middot; Secure Preferences</text>
+        <text x="465" y="98" font-size="11" text-anchor="middle" fill="#484644">Local Storage &middot; Session Storage</text>
+        <text x="465" y="116" font-size="11" text-anchor="middle" fill="#484644">IndexedDB &middot; Network</text>
+        <line x1="342" y1="132" x2="588" y2="132" stroke="#8a6d00" stroke-dasharray="3 3"/>
+        <text x="465" y="152" font-size="11" font-weight="700" text-anchor="middle" fill="#8a6d00">+ Local State (sibling file)</text>
+        <text x="465" y="170" font-size="11" text-anchor="middle" fill="#484644">holds the key the cookies are sealed with</text>
+        <text x="465" y="196" font-size="11" text-anchor="middle" fill="#484644">profile renamed to <tspan font-family="ui-monospace, Menlo, monospace">Default</tspan> on copy</text>
+
+        <path d="M614 117 L678 117" stroke="#c8c6c4" stroke-width="1.5" marker-end="url(#ar18)"/>
+        <text x="646" y="108" font-size="10" text-anchor="middle" fill="#797775">launch</text>
+
+        <rect x="684" y="42" width="288" height="150" rx="6" fill="#dff6dd" stroke="#0e700e"/>
+        <text x="828" y="66" font-size="13" font-weight="700" text-anchor="middle" fill="#0e700e">Real Edge, scratch dir</text>
+        <text x="828" y="88" font-size="11" text-anchor="middle" fill="#484644">launchPersistentContext(scratch,</text>
+        <text x="828" y="106" font-size="11" text-anchor="middle" fill="#484644">{ channel: 'msedge' })</text>
+        <text x="828" y="132" font-size="11" text-anchor="middle" fill="#484644">keychain unlocks the cookies</text>
+        <text x="828" y="150" font-size="11" text-anchor="middle" fill="#484644">reused between runs, so MFA</text>
+        <text x="828" y="166" font-size="11" text-anchor="middle" fill="#484644">fires once rather than every time</text>
+      </g>
+    </svg>
+    <figcaption>The clone is reused if <code>Default/Cookies</code> already exists. <code>--fresh-profile</code> forces a re-copy.</figcaption>
+  </figure>
+
+  <h3>Change 1 - finding the right profile without asking which one it is</h3>
+  <p>Edge numbers profiles by creation order. "Profile 16" tells you nothing. Every profile directory has a <code>Preferences</code> file with the signed-in account in it, so the lookup is by email, which is what a person actually knows.</p>
+
+  <p class="fixmeta"><b>lib/profile.mjs</b> &middot; new - resolves <code>ragnar@axsolutionsarchitecture.com</code> to <code>Profile 16</code></p>
+  <div class="code-compare">
+    <div class="cc before"><div class="hd">Before - no concept of a profile at all</div><div class="body"><span class="line keep">const ctx = await chromium.launchPersistentContext(dir, {</span><span class="line del">  // dir came from --profile, if the user knew one</span><span class="line del">  // bundled Chromium, so every cookie decrypted to ''</span><span class="line keep">  viewport, ignoreHTTPSErrors: true</span><span class="line keep">});</span></div></div>
+    <div class="cc after"><div class="hd">After - look it up by who is signed in</div><div class="body"><span class="line add">export function listProfiles(browser) {</span><span class="line add">  return readdirSync(root).filter(isProfileDir).map(dir =&gt; {</span><span class="line add">    const pf = join(root, dir, 'Preferences');</span><span class="line add">    const prefs = JSON.parse(readFileSync(pf));</span><span class="line focus">    const email = prefs?.account_info?.[0]?.email ?? null;</span><span class="line add">    return { dir, email, name: prefs?.profile?.name };</span><span class="line add">  });</span><span class="line add">}</span></div></div>
+  </div>
+
+  <p>A mistyped address lists every profile it can see with the account on each, so the next attempt is right.</p>
+
+  <h3>Change 2 - <code>try</code>, because a sign-in is a set of maybes</h3>
+  <p>The step language assumed a sequence: each instruction happens, in order, or the run stops. Entra does not work like that. It shows an account picker only when it cannot infer the account. It asks for a phone approval only when policy says so. It shows "Stay signed in?" sometimes. None of those are guaranteed, and all of them are in the way.</p>
+
+  <p class="fixmeta"><b>lib/steps.mjs</b>, <b>lib/capture.mjs</b> &middot; an optional step may fail, and never records</p>
+  <div class="code-compare">
+    <div class="cc before"><div class="hd">Before - every step is mandatory</div><div class="body"><span class="line keep">for (const step of steps) {</span><span class="line del">  const res = await runStep(page, frame, step, opts);</span><span class="line focus">  // a missing account picker stops the whole run</span><span class="line del">  if (res.recorded) await record(res.label, step.verb);</span><span class="line keep">}</span></div></div>
+    <div class="cc after"><div class="hd">After - try may miss, and is never a screen</div><div class="body"><span class="line add">if (step.optional) {</span><span class="line add">  try { await runStep(page, frame, step, opts); }</span><span class="line add">  catch { log(`  ~ skipped (optional): ${step.raw}`); }</span><span class="line focus">  continue;  // a maybe-screen cannot be a fixed beat</span><span class="line add">}</span><span class="line keep">const res = await runStep(page, frame, step, opts);</span><span class="line keep">if (res.recorded) await record(res.label, step.verb);</span></div></div>
+  </div>
+
+  <div class="note info"><b>Why <code>try</code> also means "never record"</b>A walkthrough has to play the same way twice. A screen that exists on Tuesday because Entra felt like asking, and not on Wednesday, cannot be a beat in a narrated demo. The two behaviours are one decision, not two.</div>
+
+  <h3>Change 3 - the demo opened on a real account picker</h3>
+  <p>The entry screen was recorded the moment the page settled, before any step ran. With a sign-in in front of the app, "the moment the page settled" is the Microsoft account chooser, listing three of Ragnar's real email addresses. That was screen one of the demo.</p>
+
+  <p class="fixmeta"><b>lib/capture.mjs</b> &middot; entry is recorded at the first step that acts on the app</p>
+  <div class="code-compare">
+    <div class="cc before"><div class="hd">Before - entry is whatever loaded first</div><div class="body"><span class="line del">await record('Home', 'entry');</span><span class="line keep"></span><span class="line keep">for (const step of steps) {</span><span class="line focus">  // by now you may be three redirects from the app</span><span class="line keep">  /* ... */</span><span class="line keep">}</span></div></div>
+    <div class="cc after"><div class="hd">After - recorded lazily, once we are in</div><div class="body"><span class="line add">const actsOnScreen = s =&gt; !s.optional</span><span class="line add">  &amp;&amp; ['click', 'fill', 'capture'].includes(s.verb);</span><span class="line keep"></span><span class="line keep">for (const step of steps) {</span><span class="line focus">  // wait/goto/back do not count: a wait IS the redirect</span><span class="line add">  if (!entryDone &amp;&amp; actsOnScreen(step)) await ensureEntry();</span><span class="line keep">  /* ... */</span><span class="line keep">}</span></div></div>
+  </div>
+
+  <p>A <code>wait</code> is excluded deliberately - when a sign-in is involved, a <code>wait</code> is usually the instruction describing how long the redirect takes, so treating it as "we have arrived" reintroduces the bug.</p>
+
+  <h3>Change 4 - rich-text editors silently discard what you type</h3>
+  <p>The typing path set <code>el.value</code> through React's native setter, falling back to <code>el.textContent</code> for anything else. Copilot Studio's instructions box is a Lexical contenteditable. It keeps its text in an internal model and re-renders from that model, so the assignment vanished on the next frame - with no error. The step reported success over an empty box.</p>
+
+  <p class="fixmeta"><b>lib/steps.mjs</b> &middot; contenteditable now gets real keystrokes</p>
+  <div class="code-compare">
+    <div class="cc before"><div class="hd">Before - assignment a rich editor reverts</div><div class="body"><span class="line keep">if (el.isContentEditable) {</span><span class="line del">  el.textContent = value;</span><span class="line del">  el.dispatchEvent(new Event('input', { bubbles: true }));</span><span class="line focus">  // Lexical re-renders from its own model and wipes this</span><span class="line del">  return { ok: true };</span><span class="line keep">}</span></div></div>
+    <div class="cc after"><div class="hd">After - hand it back to the keyboard</div><div class="body"><span class="line keep">if (el.isContentEditable) {</span><span class="line add">  el.focus();</span><span class="line add">  const r = document.createRange();</span><span class="line add">  r.selectNodeContents(el);</span><span class="line add">  sel.removeAllRanges(); sel.addRange(r);</span><span class="line focus">  return { ok: true, keyboard: true };   // caller types it</span><span class="line keep">}</span><span class="line add">if (res.keyboard) await page.keyboard.type(value);</span></div></div>
+  </div>
+
+  <p>Plain <code>&lt;input&gt;</code> and <code>&lt;textarea&gt;</code> keep the native-setter path, which is faster and does not depend on focus surviving. The keyboard route is for editors that own their own state: Lexical, ProseMirror, Slate, Draft.</p>
+
+  <h3>Change 5 - screens you can actually click</h3>
+  <p>This is the change that made the output a demo rather than a slideshow. Captured screens were faithful and completely dead: you could look at them, and that was all.</p>
+
+  <p>The fix uses information the capture already had and was throwing away. When a directed step clicks something, that element has a position on the screen that was just photographed. Record the rectangle, overlay it on the screenshot as a button, and point it at the screen that click produced.</p>
+
+  <p class="fixmeta"><b>lib/steps.mjs</b>, <b>lib/capture.mjs</b>, <b>primitives.jsx</b> &middot; the click's own rect becomes the hotspot</p>
+  <div class="code-compare">
+    <div class="cc before"><div class="hd">Before - the rect is discarded</div><div class="body"><span class="line keep">el.scrollIntoView({ block: 'center' });</span><span class="line del">el.click();</span><span class="line del">return { ok: true, label: nameOf(el) };</span><span class="line focus">// nothing downstream knows where the click happened</span></div></div>
+    <div class="cc after"><div class="hd">After - measured before the scroll</div><div class="body"><span class="line focus">const b = el.getBoundingClientRect();   // BEFORE the scroll</span><span class="line add">const rect = (b.top &gt;= 0 &amp;&amp; b.bottom &lt;= innerHeight)</span><span class="line add">  ? { x: b.x, y: b.y, w: b.width, h: b.height } : null;</span><span class="line keep">el.scrollIntoView({ block: 'center' });</span><span class="line keep">el.click();</span><span class="line add">return { ok: true, label: nameOf(el), rect };</span></div></div>
+  </div>
+
+  <p>Two details in there are the whole difference between a hotspot that works and one that is subtly wrong:</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Detail</th><th>Reason</th></tr></thead>
+    <tbody>
+      <tr><td>Measured <b>before</b> <code>scrollIntoView</code></td><td>Scrolling moves the element relative to a screenshot that has already been taken. Measure after, and every hotspot on a scrolled page is offset by the scroll distance.</td></tr>
+      <tr><td>Kept only if fully inside the viewport</td><td>A partially visible element has a rect that extends past the image. A hotspot in the wrong place is worse than no hotspot - it teaches the viewer the wrong control.</td></tr>
+      <tr><td>Stored as percentages of the viewport</td><td>The screenshot is rendered responsively. Pixels would drift at every width except the capture width.</td></tr>
+      <tr><td>Held <b>pending</b> until a screen appears</td><td>The click that produces a screen and the screen itself are usually not the same step. <code>Save</code> settles long before the app finishes writing, so its screen arrives on a later <code>capture</code>.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p class="fixmeta"><b>lib/capture.mjs</b> &middot; the rect waits for whichever step produces the next route</p>
+  <div class="code-compare">
+    <div class="cc before"><div class="hd">Before - attach on the same step, or lose it</div><div class="body"><span class="line del">if (res.recorded &amp;&amp; res.rect) {</span><span class="line del">  prev.hotspots.push({ rect: res.rect, to: slug });</span><span class="line focus">// Save records nothing, so its rect is dropped</span><span class="line del">}</span></div></div>
+    <div class="cc after"><div class="hd">After - carried to the next new screen</div><div class="body"><span class="line add">if (res.rect) pending = { rect: res.rect, from: last };</span><span class="line keep"></span><span class="line add">if (recordedNew &amp;&amp; pending) {</span><span class="line focus">  // whichever step produced a screen owns the hotspot</span><span class="line add">  routes[pending.from].hotspots.push({ ...rect, to: slug });</span><span class="line add">  pending = null;</span><span class="line add">}</span></div></div>
+  </div>
+
+  <h3>Change 6 - when the reconstruction is worse than the photograph</h3>
+  <p>The scaffold's classifier reads a captured outline and rebuilds it from real components: tables, stat grids, card grids, panels. It was written against Mia, which is a Power App, and Power Apps emit recognisable structure.</p>
+
+  <p>Fluent UI does not. Copilot Studio draws tables, stat blocks and cards out of nested generic divs with no semantic shape at all, so the classifier found nothing it recognised. Every screen came out as an empty placeholder, or worse: one screen rebuilt as a lone panel containing the words "Send feedback" and half a heading.</p>
+
+  <p class="fixmeta"><b>lib/scaffold.mjs</b> &middot; reconstruct only when there is something to reconstruct</p>
+  <div class="code-compare">
+    <div class="cc before"><div class="hd">Before - always rebuild, however thin</div><div class="body"><span class="line del">const blocks = classify(route.outline);</span><span class="line focus">// zero recognised blocks still renders a page</span><span class="line del">return blocks.length ? emit(blocks) : emitEmpty();</span></div></div>
+    <div class="cc after"><div class="hd">After - fall back to the screenshot</div><div class="body"><span class="line add">const faithful = blocks.some(b =&gt;</span><span class="line add">  ['table', 'stats', 'cards'].includes(b.kind));</span><span class="line keep"></span><span class="line focus">// a weak reconstruction is worse than the real thing</span><span class="line add">if (!faithful &amp;&amp; route.shot) return emitShot(route);</span><span class="line keep">return emit(blocks);</span></div></div>
+  </div>
+
+  <div class="note good"><b>The check did not regress good output</b>Re-run against Mia afterwards, its screens still reconstruct into real components - 50, 58 and 49 elements per screen, against roughly 34 for a shot-backed one. The fallback only fires where the classifier genuinely had nothing.</div>
+
+  <h3>Change 7 - the screenshots have to be inside the file</h3>
+  <p>The first attempt wrote captured PNGs to <code>public/</code>. Vite copies <code>public/</code> through untouched, which would have left a single-file <code>dist/index.html</code> quietly depending on sibling image files - and the whole point of the output is one file you can email.</p>
+
+  <p class="fixmeta"><b>lib/scaffold.mjs</b> &middot; screenshots become base64 data URIs in a module</p>
+  <div class="code-compare">
+    <div class="cc before"><div class="hd">Before - a file reference</div><div class="body"><span class="line del">await copyFile(shot, join(appDir, 'public', slug + '.png'));</span><span class="line del">// &lt;img src="/home.png"&gt;</span><span class="line focus">// dist/index.html now needs files next to it</span></div></div>
+    <div class="cc after"><div class="hd">After - inlined into the bundle</div><div class="body"><span class="line add">const b64 = (await readFile(shotSrc)).toString('base64');</span><span class="line add">lines.push(`  '${slug}': 'data:image/png;base64,${b64}',`);</span><span class="line focus">// src/demo/shots.js - Vite inlines it into the one file</span><span class="line add">await writeFile(join(app, 'src/demo/shots.js'), out);</span></div></div>
+  </div>
+
+  <p>636 KB of PNG becomes roughly 858 KB of base64. That is the price of the single-file guarantee and it is worth paying.</p>
+
+  <h3>Change 8 - a regeneration that quietly deleted your audiences</h3>
+  <p>Found while writing this section up, which is the only reason it is here rather than in production. The runbook tells you to re-run <code>scaffold --force</code> when the theme comes out wrong. <code>scaffold</code> starts by copying the template over the project, and the template contains <code>src/demo/registry.js</code> and <code>src/demo/scripts/index.js</code>.</p>
+
+  <p>So the documented way to fix a colour deleted every registered audience, every audience's narration file registration, and the storyline you had written - with no prompt, no backup and no mention in the output. It had been true since the audience feature was added.</p>
+
+  <p class="fixmeta"><b>lib/scaffold.mjs</b> &middot; snapshot what the operator owns, restore it afterwards</p>
+  <div class="code-compare">
+    <div class="cc before"><div class="hd">Before - the template wins</div><div class="body"><span class="line keep">await mkdir(outDir, { recursive: true });</span><span class="line del">await cp(TEMPLATE, outDir,</span><span class="line del">  { recursive: true, force: true });</span><span class="line focus">// registry.js and scripts/index.js are IN the template</span><span class="line del">await writeFile(dir + '/default.js', buildScript(routes));</span><span class="line del">await writeFile(dir + '/index.js', DEFAULT_INDEX);</span></div></div>
+    <div class="cc after"><div class="hd">After - the operator wins</div><div class="body"><span class="line keep">await mkdir(outDir, { recursive: true });</span><span class="line add">const owned = await snapshotOperator(outDir);</span><span class="line keep">await cp(TEMPLATE, outDir,</span><span class="line keep">  { recursive: true, force: true });</span><span class="line keep">/* ...generate everything as before... */</span><span class="line focus">// put back anything that was somebody's work</span><span class="line add">const kept = await restoreOperator(outDir, owned, fresh);</span></div></div>
+  </div>
+
+  <p>The test for "is this somebody's work" has to be cheap and has to fail safe. For narration it is: does every step still say <code>TODO</code>? A generated stub does; anything a person has touched does not. An audience script has no <code>script:</code> fields at all - it re-maps the default - so an unrecognised shape counts as written, which is the direction that loses nothing.</p>
+
+  <p class="fixmeta"><b>lib/scaffold.mjs</b> &middot; the one predicate the whole fix rests on</p>
+  <div class="code-compare">
+    <div class="cc before"><div class="hd">Before - no such test existed</div><div class="body"><span class="line del">// scaffold had no concept of a file it did not own</span><span class="line focus">// every path through it ended in writeFile</span></div></div>
+    <div class="cc after"><div class="hd">After - unrecognised means keep it</div><div class="body"><span class="line add">function isGeneratedNarration(src) {</span><span class="line add">  const s = [...src.matchAll(/script: '([^']*)'/g)];</span><span class="line focus">  if (!s.length) return false;   // shape we do not know</span><span class="line add">  return s.every(m =&gt; m[1].startsWith('TODO:'));</span><span class="line add">}</span></div></div>
+  </div>
+
+  <p>Kept narration may now point at routes the new capture no longer has, so the freshly generated version is written beside it as <code>default.generated.js</code> rather than thrown away, and the run says so out loud:</p>
+
+  <pre><code>  kept your work - not overwritten:
+            src/demo/registry.js
+            src/demo/scripts/default.js
+            src/demo/scripts/finance-exec.js
+            src/demo/scripts/index.js
+            src/demo/scripts/default.generated.js (new, for merging)
+  the routes may have changed under that narration - diff it against
+  default.generated.js before the next run.</code></pre>
+
+  <p>A project that has not been edited stays silent, because a stub that is regenerated has lost nothing and a message about it is noise.</p>
+
+  <h3>The nine bugs this run exposed</h3>
+  <p>Same pattern as every previous round: each produced a green-looking result with wrong output.</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>#</th><th>Symptom</th><th>Cause</th><th>Now</th></tr></thead>
+    <tbody>
+      <tr><td>14</td><td>Every page showed a sign-in screen, with a valid signed-in profile</td><td>Bundled Chromium cannot read the macOS keychain entry the cookie store is sealed against, so it decrypted every cookie to an empty string</td><td>Launches the real Edge via <code>channel: 'msedge'</code></td></tr>
+      <tr><td>15</td><td>Instructions box was empty under a step that reported success</td><td><code>textContent</code> assignment on a Lexical contenteditable is reverted on the next render, silently</td><td>Focus, select, and type real keystrokes</td></tr>
+      <tr><td>16</td><td>Every Copilot Studio screen rendered "build it out here"</td><td>Fluent draws tables and cards from nested divs, so the classifier recognised nothing</td><td>The <code>faithful</code> check falls back to the captured screenshot</td></tr>
+      <tr><td>17</td><td>Screenshot screens had nothing to click</td><td>The clicked element's position was never recorded</td><td>Hotspots, measured before the scroll, viewport-clipped</td></tr>
+      <tr><td>18</td><td>The <code>Save</code> hotspot was missing</td><td>Save produced no screen of its own - the screen arrived on the next step</td><td>The rect is held pending and attached to the next new route</td></tr>
+      <tr><td>19</td><td>Sign-in screens appeared as demo screens</td><td><code>try</code> steps were recording like any other step</td><td>An optional step never records</td></tr>
+      <tr><td>20</td><td>Screen one of the demo was an account picker with real email addresses</td><td>Entry was recorded when the page settled, which was mid sign-in</td><td>Entry is recorded lazily, at the first step that acts on the app</td></tr>
+      <tr><td>21</td><td>Home inside a guided audience threw "No such screen: /home"</td><td><code>scopedPath</code> maps <code>/</code> to <code>&lt;prefix&gt;/home</code> and nothing ever registered <code>/home</code></td><td><code>/home</code> falls back to <code>/</code>. Affected every guided demo, Mia's included</td></tr>
+      <tr><td>22</td><td><code>scaffold --force</code> deleted every registered audience and the written narration</td><td>The template copy includes <code>registry.js</code> and <code>scripts/index.js</code>, so regenerating <code>src/</code> reset them</td><td>Operator-owned files are snapshotted and restored, and the run prints what it kept</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="note info"><b>Bugs 21 and 22 are the interesting ones</b>Neither was introduced by this work. Both had been in the audience feature since it was written - one reachable by pressing Home inside any guided demo, the other triggered by the exact command the runbook gives you for fixing a theme. It took an unrelated Copilot Studio capture to surface the first and writing this section to surface the second. The two scope tests cover containment, that a sub-site stays inside itself; nothing covered whether a route a sub-site can reach resolves, and nothing covered whether regenerating a project destroys it.</div>
+
+  <h3>The discovery loop, used in anger</h3>
+  <p>Copilot Studio's new agent experience was unknown territory. Nothing was guessed. Each deliberately-wrong step returns the real labels, which become the next step list.</p>
+
+  <pre><code>&gt; click NoSuchThing
+  no clickable element matching "NoSuchThing".
+  On screen now: "Skip to main content", "Copilot Studio", "Agents", "Tools",
+  "AgentCreate an agent to take actions and answer questions...", "Flows",
+  "Prompts", "Knowledge", ...
+
+&gt; type x into NoSuchField
+  no input matching "NoSuchField".
+  Inputs on screen: "Name your agent", "Agent instructions", "Prompt model"</code></pre>
+
+  <p>Two wrong steps, thirty seconds, and the real step list was writable. This is the intended way to meet an unfamiliar application, and it cannot go stale the way a hand-written selector map does.</p>
+
+  <h3>Verification</h3>
+  <p>The agent exists in the tenant - named, instructed, saved, model Claude Opus 5 - and the demo walks the flow that created it.</p>
+
+  <pre><code>$ demo-forge capture "https://copilotstudio.microsoft.com/environments/..." \
+    --steps steps.txt --edge-profile ragnar@axsolutionsarchitecture.com --headed
+
+profile  Profile 16 - ragnar@axsolutionsarchitecture.com
+clone    reusing existing session clone
+mode     directed (14 steps)
+  ~ skipped (optional): try click Ragnar Pitla
+  ~ skipped (optional): try click Yes
+  [1] Home - 214 els
+  &gt; click AgentCreate an agent to take actions...
+  [2] Start a new agent - 96 els
+  &gt; fill Name your agent as "Name the agent"
+  [3] Name the agent - 98 els
+  &gt; fill Agent instructions as "Write the instructions"    (keyboard)
+  [4] Write the instructions - 104 els
+  &gt; click Save
+  &gt; capture as "Agent created"
+  [5] Agent created - 121 els
+
+  routes   5        hotspots  4        tokens   38
+
+Render gate
+  PASS  route-                      els= 34 accent= 2 text=118
+  PASS  route-start-a-new-agent     els= 34 accent= 2 text=118
+  PASS  route-name-the-agent        els= 34 accent= 2 text=118
+  PASS  route-write-the-instructions els=34 accent= 2 text=118
+  PASS  route-agent-created         els= 34 accent= 2 text=118
+  PASS  audience-guide              els= 41 accent= 4 text=580 home-&gt;/guide/home
+RENDER PASS - 6 screens</code></pre>
+
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Check</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>Signed-in capture</td><td>Reached Copilot Studio as Ragnar Pitla, using a clone of Profile 16, while Edge stayed open</td></tr>
+      <tr><td>Optional steps</td><td>2 of 3 sign-in steps skipped on the reused clone; none recorded a screen</td></tr>
+      <tr><td>Agent created</td><td>Finance Reconciliation Agent - name, instructions and model all confirmed in the final screenshot</td></tr>
+      <tr><td>Click-through</td><td><b>5 screens reached by clicking hotspots</b>, verified by driving the built <code>dist/index.html</code> in a headless browser</td></tr>
+      <tr><td>Render gate</td><td>6 of 6 PASS including audience containment</td></tr>
+      <tr><td>Single file</td><td><code>dist/index.html</code>, 1,043,508 bytes, no sibling assets, opens from the filesystem</td></tr>
+      <tr><td>Crawl regression</td><td>Mia site re-run twice after the changes: <code>mode crawl</code>, 6 routes, 163 tokens, BUILD PASS - unchanged</td></tr>
+      <tr><td>Reconstruction regression</td><td>Mia's screens still rebuild as components, 50 / 58 / 49 elements - the <code>faithful</code> check did not fire where it should not</td></tr>
+      <tr><td>Regeneration is non-destructive</td><td>Scaffold, register <code>/Finance-exec</code>, write narration, then <code>scaffold --force</code>: registry entry, script registration, audience narration and written narration all survive, and <code>default.generated.js</code> appears. 5 of 5 assertions pass.</td></tr>
+      <tr><td>Preserved project still runs</td><td>Render gate on the regenerated project: <b>7 of 7 PASS</b>, including <code>audience-Finance-exec home-&gt;/Finance-exec/home</code> - proving the restored registry is functional, not just present as text</td></tr>
+      <tr><td>No false positives</td><td>A fresh scaffold, and a re-scaffold of an unedited project, both stay silent and regenerate the stub as before</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>What this leaves open</h3>
+  <div class="decisions">
+    <div class="dec"><h4>MFA is not suppressed by the checkbox</h4><p>"Don't ask again for 14 days" was ticked and the next run was challenged anyway. Either the tick did not register, or tenant conditional access overrides it.</p><p class="why"><b>Consequence</b> Assume every capture against this tenant needs one headed run with a phone to hand. Run <code>--headed</code> first, then reuse the clone.</p></div>
+    <div class="dec"><h4>Static screenshots only</h4><p>What is captured is a photograph plus the DOM. Transitions, loading states, spinners and any motion in the source app are not recorded.</p><p class="why"><b>Consequence</b> The movement in the output is the guided spotlight and the hotspot pulse. If a demo needs the app's own animation, that is a different capture mechanism.</p></div>
+    <div class="dec"><h4>Drafts accumulate</h4><p>The create-and-save flow was run four times while the hotspot recording was being fixed, so the tenant has roughly four identical agent drafts.</p><p class="why"><b>Consequence</b> A directed capture that writes data writes it every run. Point destructive flows at a disposable environment, or budget for cleanup.</p></div>
+  </div>
+</section>
+
 <footer class="doc">
-  <p><b>Demo Forge</b> - architecture and operating manual. Generated 15-09-26 from the installed skill at <code>~/.copilot/skills/demo-forge</code> and from a verified end-to-end run against the Project Mia source application.</p>
-  <p>Figures are measured, not estimated: line counts from the source tree, token and route counts from <code>capture/manifest.json</code>, gate results from the headless run. Contains no customer data, no credentials and no tenant or subscription identifiers.</p>
+  <p><b>Demo Forge</b> - architecture and operating manual. Generated 15-09-26, revised after the Copilot Studio run, from the installed skill at <code>~/.copilot/skills/demo-forge</code> and from a verified end-to-end run against the Project Mia source application.</p>
+  <p>Figures are measured, not estimated: line counts are code files under <code>tools/</code> and <code>assets/template/</code> at commit <code>2c2b29a</code>, excluding this report; token and route counts from <code>capture/manifest.json</code>, gate results from the headless run. Contains no customer data, no credentials and no tenant or subscription identifiers.</p>
   <p>Reviewed by Ragnar DD-MM-YY-HH-MM [ ] Comments from Ragnar:<br>Assisted by Ragnar's Agent.</p>
 </footer>
 </main>

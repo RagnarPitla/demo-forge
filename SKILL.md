@@ -188,6 +188,14 @@ on-brand, route-complete application instead of starting at an empty file.
 
 `references/reconstruction.md` covers what to change first and in what order.
 
+Re-running scaffold over an existing project needs `--force`, and a forced run
+regenerates `src/`. It will not take your work with it: the audience registry,
+the narration index and any narration you have written are kept, and the run
+prints what it kept. A narration that is still all `TODO` is regenerated, since
+there is nothing there to lose. If your own narration is kept, the freshly
+generated version is written beside it as `default.generated.js` so you can see
+what changed when the routes moved.
+
 ## Stage 5 - storyline
 
 This is the actual demo, and it is the part no tool can do for you.
